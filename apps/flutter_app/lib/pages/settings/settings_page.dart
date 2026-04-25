@@ -33,64 +33,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final appSettings = AppSettingsService();
-    // LLM Settings
-    final llmEnabled = await _llmSettingsService.isEnabled();
-    String llmSub = '';
-    bool llmNeedsConf = false;
-
-    if (!llmEnabled) {
-      llmSub = 'Off';
-    } else {
-      final llmProviderType = await _llmSettingsService.getProvider();
-      if (llmProviderType == 'cloud_providers') {
-        final cloudProvider = await _llmSettingsService.getCloudProvider();
-        final model = await _llmSettingsService.getModel(
-          provider: cloudProvider,
-        );
-        final apiKey = await _llmSettingsService.getApiKey(
-          provider: cloudProvider,
-        );
-        if (apiKey.isEmpty || model.isEmpty) {
-          llmSub = 'need configuration';
-          llmNeedsConf = true;
-        } else {
-          llmSub = '$cloudProvider: $model';
-        }
-      } else {
-        llmSub = 'Cloud';
-      }
-    }
-
-    // STT Settings
-    String sttSub = '';
-    bool sttNeedsConf = false;
-    final sttProviderType = await _sttSettingsService.getProvider();
-    if (sttProviderType == 'cloud_providers') {
-      final cloudProvider = await _sttSettingsService.getCloudProvider();
-      final model = await _sttSettingsService.getModel(provider: cloudProvider);
-      final apiKey = await _sttSettingsService.getApiKey(
-        provider: cloudProvider,
-      );
-      if (apiKey.isEmpty || model.isEmpty) {
-        sttSub = 'need configuration';
-        sttNeedsConf = true;
-      } else {
-        sttSub = '$cloudProvider: $model';
-      }
-    } else {
-      sttSub = 'Cloud';
-    }
-
-    // Language Settings
+    final llmSummary = await _llmSettingsService.getSummary();
+    final sttSummary = await _sttSettingsService.getSummary();
     final languageSub = await appSettings.getSelectedLanguageNames();
 
     if (mounted) {
       setState(() {
-        _llmEnabled = llmEnabled;
-        _llmSubtitle = llmSub;
-        _llmNeedsConfig = llmNeedsConf;
-        _sttSubtitle = sttSub;
-        _sttNeedsConfig = sttNeedsConf;
+        _llmEnabled = llmSummary.enabled;
+        _llmSubtitle = llmSummary.subtitle;
+        _llmNeedsConfig = llmSummary.needsConfiguration;
+        _sttSubtitle = sttSummary.subtitle;
+        _sttNeedsConfig = sttSummary.needsConfiguration;
         _languageSubtitle = languageSub;
       });
     }

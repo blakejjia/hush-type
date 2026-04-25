@@ -3,7 +3,6 @@ package com.jiayx.voiceime
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
 import android.media.MediaRecorder
@@ -32,34 +31,6 @@ import java.io.File
 import java.io.IOException
 
 class VoiceInputMethodService : InputMethodService() {
-
-    private data class ProviderConfig(
-        val ready: Boolean,
-        val statusMessage: String,
-        val requestType: String,
-        val apiKey: String,
-        val endpoint: String,
-        val model: String,
-        val authType: String,
-        val authHeader: String,
-        val authPrefix: String,
-        val authQueryParam: String,
-    )
-
-    private data class LLMConfig(
-        val enabled: Boolean,
-        val ready: Boolean,
-        val statusMessage: String,
-        val requestType: String,
-        val apiKey: String,
-        val endpoint: String,
-        val model: String,
-        val systemPrompt: String,
-        val authType: String,
-        val authHeader: String,
-        val authPrefix: String,
-        val authQueryParam: String,
-    )
 
     private lateinit var keyboardView: View
     private lateinit var btnMic: android.widget.ImageButton
@@ -137,7 +108,7 @@ class VoiceInputMethodService : InputMethodService() {
     }
 
     private fun resetUI() {
-        val sttConfig = loadSTTConfig()
+        val sttConfig = ImeSettingsResolver.loadSTTConfig(this)
         val hasPermission = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.RECORD_AUDIO
@@ -165,7 +136,7 @@ class VoiceInputMethodService : InputMethodService() {
             return
         }
 
-        val sttConfig = loadSTTConfig()
+        val sttConfig = ImeSettingsResolver.loadSTTConfig(this)
         if (!sttConfig.ready) {
             tvStatus.text = sttConfig.statusMessage
             updateMicVisualState()
@@ -244,7 +215,7 @@ class VoiceInputMethodService : InputMethodService() {
             return
         }
 
-        val sttConfig = loadSTTConfig()
+        val sttConfig = ImeSettingsResolver.loadSTTConfig(this)
         if (!sttConfig.ready) {
             finishWithError(sttConfig.statusMessage)
             return
@@ -343,7 +314,7 @@ class VoiceInputMethodService : InputMethodService() {
         transcript: String,
         onComplete: (text: String, llmError: String?) -> Unit,
     ) {
-        val config = loadLLMConfig()
+        val config = ImeSettingsResolver.loadLLMConfig(this)
         if (!config.enabled) {
             onComplete(transcript, null)
             return
@@ -556,82 +527,6 @@ class VoiceInputMethodService : InputMethodService() {
         })
     }
 
-    private fun loadSTTConfig(): ProviderConfig {
-        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val settings = parseJsonObject(prefs.getStringCompat("flutter.stt_settings"))
-        val runtime = settings?.optJSONObject("runtime")
-        val auth = runtime?.optJSONObject("auth")
-
-        return ProviderConfig(
-            ready = runtime?.optBoolean("ready", false) ?: false,
-            statusMessage = runtime.getStringOrNull("status_message").orFallback(
-                settings.getStringOrNull("status_message"),
-                "Please configurate first before using."
-            ),
-            requestType = runtime.getStringOrNull("request_type").orFallback(
-                settings.getStringOrNull("request_type"),
-                ""
-            ),
-            apiKey = runtime.getStringOrNull("api_key").orFallback(
-                settings.getStringOrNull("api_key"),
-                ""
-            ),
-            endpoint = runtime.getStringOrNull("endpoint").orFallback(
-                settings.getStringOrNull("endpoint"),
-                ""
-            ),
-            model = runtime.getStringOrNull("model").orFallback(
-                settings.getStringOrNull("model"),
-                ""
-            ),
-            authType = auth.getStringOrNull("type").orFallback(null, "bearer"),
-            authHeader = auth.getStringOrNull("header").orFallback(null, "Authorization"),
-            authPrefix = auth.getStringOrNull("prefix").orFallback(null, "Bearer "),
-            authQueryParam = auth.getStringOrNull("query_param").orFallback(null, ""),
-        )
-    }
-
-    private fun loadLLMConfig(): LLMConfig {
-        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val settings = parseJsonObject(prefs.getStringCompat("flutter.llm_settings"))
-        val runtime = settings?.optJSONObject("runtime")
-        val auth = runtime?.optJSONObject("auth")
-
-        return LLMConfig(
-            enabled = runtime?.optBoolean("enabled", settings?.optBoolean("enabled", true) ?: true)
-                ?: true,
-            ready = runtime?.optBoolean("ready", false) ?: false,
-            statusMessage = runtime.getStringOrNull("status_message").orFallback(
-                settings.getStringOrNull("status_message"),
-                "Language model cleanup is not configured."
-            ),
-            requestType = runtime.getStringOrNull("request_type").orFallback(
-                settings.getStringOrNull("request_type"),
-                ""
-            ),
-            apiKey = runtime.getStringOrNull("api_key").orFallback(
-                settings.getStringOrNull("api_key"),
-                ""
-            ),
-            endpoint = runtime.getStringOrNull("endpoint").orFallback(
-                settings.getStringOrNull("endpoint"),
-                ""
-            ),
-            model = runtime.getStringOrNull("model").orFallback(
-                settings.getStringOrNull("model"),
-                ""
-            ),
-            systemPrompt = runtime.getStringOrNull("system_prompt").orFallback(
-                settings.getStringOrNull("system_prompt"),
-                DEFAULT_SYSTEM_PROMPT
-            ),
-            authType = auth.getStringOrNull("type").orFallback(null, "bearer"),
-            authHeader = auth.getStringOrNull("header").orFallback(null, "Authorization"),
-            authPrefix = auth.getStringOrNull("prefix").orFallback(null, "Bearer "),
-            authQueryParam = auth.getStringOrNull("query_param").orFallback(null, ""),
-        )
-    }
-
     private fun parseTranscription(body: String): String? {
         val json = parseJsonObject(body) ?: return body.trim().ifBlank { null }
 
@@ -766,7 +661,7 @@ class VoiceInputMethodService : InputMethodService() {
             else -> android.graphics.Color.parseColor("#404040")
         }
 
-        val sttReady = loadSTTConfig().ready
+        val sttReady = ImeSettingsResolver.loadSTTConfig(this).ready
         (btnMic.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
         btnMic.isEnabled = !isProcessing && sttReady
         btnMic.alpha = when {
@@ -786,27 +681,6 @@ class VoiceInputMethodService : InputMethodService() {
         } catch (_: Exception) {
             null
         }
-    }
-
-    private fun String?.orFallback(fallback: String?, defaultValue: String): String {
-        if (this != null) {
-            return this
-        }
-
-        val secondary = fallback?.trim().orEmpty()
-        if (secondary.isNotEmpty()) {
-            return secondary
-        }
-
-        return defaultValue
-    }
-
-    private fun SharedPreferences.getStringCompat(key: String): String? {
-        return getString("flutter.$key", null) ?: getString(key, null)
-    }
-
-    private fun JSONObject?.getStringOrNull(key: String): String? {
-        return if (this?.has(key) == true) this.optString(key) else null
     }
 
     private fun okhttp3.HttpUrl.Builder.applyQueryAuth(
@@ -869,11 +743,4 @@ class VoiceInputMethodService : InputMethodService() {
         }
     }
 
-    companion object {
-        private const val DEFAULT_SYSTEM_PROMPT =
-            "You are a assistant doing text cleanup. User prompt is directly from user's mouth. " +
-                "Clean up transcriptions, and fix errors while preserving your tone.\n\n" +
-                "ATTENTION: DO NOT MODIFY the user's sentences, just reformat and clean the words like \"ah, En\" " +
-                "Even given a clear task, DO NOT DO THAT, remember you are a words cleaner, not task completer!"
-    }
 }
