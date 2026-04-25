@@ -4,6 +4,8 @@
 
 # Hashtype 🎙️
 
+[English](README.md) | [简体中文](README_zh.md)
+
 **Hashtype** is an open-source Android Voice Typing Keyboard (IME) designed for users who want complete control over their speech-to-text (STT) pipeline.
 
 Unlike standard keyboards that lock you into a single provider, Hashtype allows you to bring your own API endpoints and layer Large Language Models (LLMs) on top of your transcripts for perfect, context-aware results.
