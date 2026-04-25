@@ -1,4 +1,4 @@
-package com.jiayx.voiceime
+package com.jia_yx.hashtype
 
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
