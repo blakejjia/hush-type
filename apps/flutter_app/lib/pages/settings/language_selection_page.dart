@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/app_settings_service.dart';
 
 class LanguageSelectionPage extends StatefulWidget {
   const LanguageSelectionPage({super.key});
@@ -8,6 +9,7 @@ class LanguageSelectionPage extends StatefulWidget {
 }
 
 class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
+  final AppSettingsService _settingsService = AppSettingsService();
   final List<Map<String, String>> _languages = [
     {'name': 'English (US)', 'code': 'en_US'},
     {'name': 'Chinese (Simplified)', 'code': 'zh_CN'},
@@ -21,7 +23,26 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
     {'name': 'Portuguese', 'code': 'pt_PT'},
   ];
 
-  final Set<String> _selectedLanguages = {'en_US'};
+  Set<String> _selectedLanguages = {'en_US'};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final languages = await _settingsService.getSelectedLanguages();
+    if (mounted) {
+      setState(() {
+        _selectedLanguages = languages.toSet();
+      });
+    }
+  }
+
+  void _saveSettings() {
+    _settingsService.setSelectedLanguages(_selectedLanguages.toList());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +51,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
         title: const Text('Input Languages', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, _selectedLanguages.toList()),
+            onPressed: () => Navigator.pop(context),
             child: const Text('Done'),
           ),
         ],
@@ -60,6 +81,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                       );
                     }
                   }
+                  _saveSettings();
                 });
               },
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

@@ -1,10 +1,22 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-class STTSettingsService {
-  static const String _providerKey = 'flutter.stt_provider';
-  static const String _cloudProviderKey = 'flutter.stt_cloud_provider';
-  static const String _modelKey = 'flutter.stt_model';
-  static const String _apiKeyKey = 'flutter.stt_api_key';
+class LLMSettingsService {
+  static const String _enabledKey = 'flutter.llm_enabled';
+  static const String _providerKey = 'flutter.llm_provider';
+  static const String _cloudProviderKey = 'flutter.llm_cloud_provider';
+  static const String _apiKeyKey = 'flutter.llm_api_key';
+  static const String _endpointKey = 'flutter.llm_endpoint';
+  static const String _modelKey = 'flutter.llm_model';
+
+  Future<bool> isEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_enabledKey) ?? true;
+  }
+
+  Future<void> setEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enabledKey, value);
+  }
 
   Future<String> getProvider() async {
     final prefs = await SharedPreferences.getInstance();
@@ -26,16 +38,6 @@ class STTSettingsService {
     await prefs.setString(_cloudProviderKey, value);
   }
 
-  Future<String> getModel() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_modelKey) ?? 'Whisper Large v3';
-  }
-
-  Future<void> setModel(String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_modelKey, value);
-  }
-
   Future<String> getApiKey() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_apiKeyKey) ?? '';
@@ -46,8 +48,6 @@ class STTSettingsService {
     await prefs.setString(_apiKeyKey, value);
   }
 
-  static const String _endpointKey = 'flutter.stt_endpoint';
-
   Future<String> getEndpoint() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_endpointKey) ?? '';
@@ -56,5 +56,15 @@ class STTSettingsService {
   Future<void> setEndpoint(String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_endpointKey, value);
+  }
+
+  Future<String> getModel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_modelKey) ?? '';
+  }
+
+  Future<void> setModel(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_modelKey, value);
   }
 }
