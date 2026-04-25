@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/app_settings_service.dart';
 import '../../services/llm_settings_service.dart';
+import '../../services/stt_settings_service.dart';
 import '../../main.dart';
 import 'language_selection_page.dart';
 import 'language_model_settings_page.dart';
@@ -15,20 +16,76 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  final STTSettingsService _sttSettingsService = STTSettingsService();
   final LLMSettingsService _llmSettingsService = LLMSettingsService();
   bool _llmEnabled = true;
+  String _llmSubtitle = 'Loading...';
+  String _sttSubtitle = 'Loading...';
+  bool _llmNeedsConfig = false;
+  bool _sttNeedsConfig = false;
 
   @override
   void initState() {
     super.initState();
-    _loadLLMSettings();
+    _loadSettings();
   }
 
-  Future<void> _loadLLMSettings() async {
-    final enabled = await _llmSettingsService.isEnabled();
+  Future<void> _loadSettings() async {
+    // LLM Settings
+    final llmEnabled = await _llmSettingsService.isEnabled();
+    String llmSub = '';
+    bool llmNeedsConf = false;
+
+    if (!llmEnabled) {
+      llmSub = 'Off';
+    } else {
+      final llmProviderType = await _llmSettingsService.getProvider();
+      if (llmProviderType == 'cloud_providers') {
+        final cloudProvider = await _llmSettingsService.getCloudProvider();
+        final model = await _llmSettingsService.getModel(
+          provider: cloudProvider,
+        );
+        final apiKey = await _llmSettingsService.getApiKey(
+          provider: cloudProvider,
+        );
+        if (apiKey.isEmpty || model.isEmpty) {
+          llmSub = 'need configuration';
+          llmNeedsConf = true;
+        } else {
+          llmSub = '$cloudProvider: $model';
+        }
+      } else {
+        llmSub = 'Cloud';
+      }
+    }
+
+    // STT Settings
+    String sttSub = '';
+    bool sttNeedsConf = false;
+    final sttProviderType = await _sttSettingsService.getProvider();
+    if (sttProviderType == 'cloud_providers') {
+      final cloudProvider = await _sttSettingsService.getCloudProvider();
+      final model = await _sttSettingsService.getModel(provider: cloudProvider);
+      final apiKey = await _sttSettingsService.getApiKey(
+        provider: cloudProvider,
+      );
+      if (apiKey.isEmpty || model.isEmpty) {
+        sttSub = 'need configuration';
+        sttNeedsConf = true;
+      } else {
+        sttSub = '$cloudProvider: $model';
+      }
+    } else {
+      sttSub = 'Cloud';
+    }
+
     if (mounted) {
       setState(() {
-        _llmEnabled = enabled;
+        _llmEnabled = llmEnabled;
+        _llmSubtitle = llmSub;
+        _llmNeedsConfig = llmNeedsConf;
+        _sttSubtitle = sttSub;
+        _sttNeedsConfig = sttNeedsConf;
       });
     }
   }
@@ -37,7 +94,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Settings',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: ListenableBuilder(
@@ -55,7 +115,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () async {
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ThemeColorPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const ThemeColorPage(),
+                    ),
                   );
                 },
                 trailing: Container(
@@ -75,7 +137,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: Switch(
                   value: themeManager.themeMode == ThemeMode.dark,
                   onChanged: (v) {
-                    themeManager.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                    themeManager.setThemeMode(
+                      v ? ThemeMode.dark : ThemeMode.light,
+                    );
                   },
                 ),
               ),
@@ -89,7 +153,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () async {
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const LanguageSelectionPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const LanguageSelectionPage(),
+                    ),
                   );
                 },
               ),
@@ -99,26 +165,33 @@ class _SettingsPageState extends State<SettingsPage> {
                 context,
                 icon: Icons.mic_rounded,
                 title: 'Speech-to-Text',
-                subtitle: 'Pick an engine for dictation and recording',
+                subtitle: _sttSubtitle,
+                subtitleColor: _sttNeedsConfig ? Colors.red : null,
                 onTap: () async {
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SpeechToTextSettingsPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const SpeechToTextSettingsPage(),
+                    ),
                   );
+                  _loadSettings();
                 },
               ),
               _buildSettingTile(
                 context,
                 icon: Icons.psychology_rounded,
                 title: 'Language Models',
-                subtitle: 'Configure cleanup and formatting models',
+                subtitle: _llmSubtitle,
+                subtitleColor: _llmNeedsConfig ? Colors.red : null,
                 onTap: () async {
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const LanguageModelSettingsPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const LanguageModelSettingsPage(),
+                    ),
                   );
                   // Refresh status when coming back
-                  _loadLLMSettings();
+                  _loadSettings();
                 },
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -154,7 +227,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   await appSettings.resetSetup();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Setup reset! App will show welcome page on next launch.')),
+                      const SnackBar(
+                        content: Text(
+                          'Setup reset! App will show welcome page on next launch.',
+                        ),
+                      ),
                     );
                   }
                 },
@@ -186,6 +263,7 @@ class _SettingsPageState extends State<SettingsPage> {
     required IconData icon,
     required String title,
     required String subtitle,
+    Color? subtitleColor,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
@@ -194,7 +272,10 @@ class _SettingsPageState extends State<SettingsPage> {
       child: ListTile(
         leading: Icon(icon),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 13)),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 13, color: subtitleColor),
+        ),
         trailing: trailing ?? const Icon(Icons.chevron_right, size: 20),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
