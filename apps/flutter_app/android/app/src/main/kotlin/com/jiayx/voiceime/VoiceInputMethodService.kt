@@ -1,6 +1,7 @@
 package com.jiayx.voiceime
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
@@ -8,11 +9,16 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.asRequestBody
+import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 
@@ -24,6 +30,7 @@ class VoiceInputMethodService : InputMethodService() {
     private var isRecording = false
     private var recorder: MediaRecorder? = null
     private var outputFilePath: String = ""
+    private val client = OkHttpClient()
 
     override fun onCreate() {
         super.onCreate()
@@ -183,32 +190,77 @@ class VoiceInputMethodService : InputMethodService() {
             return
         }
 
-        // TODO: 1. 读取 SharedPreferences 获取 Firebase Token
-        // TODO: 2. 上传文件到 Firebase Function
+        // Retrieve settings from Flutter's SharedPreferences
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        // Flutter's shared_preferences plugin prefixes keys with 'flutter.'
+        // Note: if the flutter code sets 'flutter.stt_api_key', it becomes 'flutter.flutter.stt_api_key'
+        val apiKey = prefs.getString("flutter.flutter.stt_api_key", "") ?: prefs.getString("flutter.stt_api_key", "") ?: ""
+        val model = prefs.getString("flutter.flutter.stt_model", "whisper-1") ?: prefs.getString("flutter.stt_model", "whisper-1") ?: "whisper-1"
 
-        // Mock 网络回调成功后写入文本
-        mockNetworkCall { transcribedText ->
-            commitTextToInput(transcribedText)
-            tvStatus.text = "Success!"
-            
-            // Post delayed reset
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (!isRecording) {
-                    resetUI()
-                }
-            }, 2000)
+        if (apiKey.isEmpty()) {
+            tvStatus.text = "API Key missing in settings!"
+            Handler(Looper.getMainLooper()).postDelayed({ resetUI() }, 3000)
+            return
         }
+
+        // Upload to Firebase Cloud Function
+        // Using emulator for now or direct prod URL? Assuming prod or a valid emulator proxy.
+        // TODO: Replace with your actual deployed Firebase Function URL or emulator IP
+        val url = "http://10.0.2.2:5001/YOUR_PROJECT_ID/us-central1/transcribeAudio" // Local emulator for android
+
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("apiKey", apiKey)
+            .addFormDataPart("model", model)
+            .addFormDataPart(
+                "audio",
+                "voice_record.m4a",
+                audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
+            )
+            .build()
+
+        val request = Request.Builder()
+            .url(url)
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("VoiceIME", "Network error", e)
+                Handler(Looper.getMainLooper()).post {
+                    tvStatus.text = "Network Error"
+                    Handler(Looper.getMainLooper()).postDelayed({ resetUI() }, 3000)
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseData = response.body?.string()
+                Log.d("VoiceIME", "Response: $responseData")
+                Handler(Looper.getMainLooper()).post {
+                    if (response.isSuccessful && responseData != null) {
+                        try {
+                            val json = JSONObject(responseData)
+                            if (json.optInt("code") == 0) {
+                                val text = json.getJSONObject("data").getString("text")
+                                commitTextToInput(text)
+                                tvStatus.text = "Success!"
+                            } else {
+                                tvStatus.text = "Error: ${json.optString("message")}"
+                            }
+                        } catch (e: Exception) {
+                            tvStatus.text = "Invalid Response"
+                        }
+                    } else {
+                        tvStatus.text = "Server Error ${response.code}"
+                    }
+                    Handler(Looper.getMainLooper()).postDelayed({ resetUI() }, 2000)
+                }
+            }
+        })
     }
 
     private fun commitTextToInput(text: String) {
         val ic = currentInputConnection
         ic?.commitText(text, 1)
-    }
-
-    private fun mockNetworkCall(callback: (String) -> Unit) {
-        Handler(Looper.getMainLooper()).postDelayed({
-            // Phase 1 Mocking the transcribe action
-            callback("Hello, this is a mock transcription from Phase 1.")
-        }, 1500)
     }
 }

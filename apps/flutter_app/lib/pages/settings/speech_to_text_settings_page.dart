@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SpeechToTextSettingsPage extends StatefulWidget {
   const SpeechToTextSettingsPage({super.key});
@@ -55,8 +56,39 @@ class STTEngineSelectionList extends StatefulWidget {
 
 class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
   String _selectedProvider = 'cloud_providers';
-  String _selectedCloudProvider = 'Groq';
+  String _selectedCloudProvider = 'OpenAI';
   String _selectedModel = 'Whisper Large v3';
+  final TextEditingController _apiKeyController = TextEditingController();
+  
+  // Use a specific prefix to make it accessible by Android native SharedPreferences
+  static const String prefsPrefix = "FlutterSharedPreferences.";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedProvider = prefs.getString('flutter.stt_provider') ?? 'cloud_providers';
+      _selectedCloudProvider = prefs.getString('flutter.stt_cloud_provider') ?? 'OpenAI';
+      _selectedModel = prefs.getString('flutter.stt_model') ?? 'Whisper Large v3';
+      _apiKeyController.text = prefs.getString('flutter.stt_api_key') ?? '';
+    });
+  }
+
+  Future<void> _saveSetting(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('flutter.$key', value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +161,10 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
         ),
       ),
       child: ListTile(
-        onTap: enabled ? () => setState(() => _selectedProvider = id) : null,
+        onTap: enabled ? () {
+          setState(() => _selectedProvider = id);
+          _saveSetting('stt_provider', id);
+        } : null,
         leading: Icon(icon, color: isSelected ? colorScheme.primary : null),
         title: Row(
           children: [
@@ -151,7 +186,10 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
         trailing: Radio<String>(
           value: id,
           groupValue: _selectedProvider,
-          onChanged: enabled ? (v) => setState(() => _selectedProvider = v!) : null,
+          onChanged: enabled ? (v) {
+            setState(() => _selectedProvider = v!);
+            _saveSetting('stt_provider', v);
+          } : null,
         ),
       ),
     );
@@ -175,7 +213,10 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
                   child: ChoiceChip(
                     label: Text(p),
                     selected: isSelected,
-                    onSelected: (v) => setState(() => _selectedCloudProvider = p),
+                    onSelected: (v) {
+                      setState(() => _selectedCloudProvider = p);
+                      _saveSetting('stt_cloud_provider', p);
+                    },
                   ),
                 );
               }).toList(),
@@ -185,10 +226,13 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
           const Text('API Key', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
           TextField(
+            controller: _apiKeyController,
             obscureText: true,
+            onChanged: (val) {
+              _saveSetting('stt_api_key', val);
+            },
             decoration: InputDecoration(
-              hintText: 'gsk...',
-              suffixText: 'edit',
+              hintText: 'sk-...',
               prefixIcon: const Icon(Icons.key, size: 18),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -197,8 +241,8 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
           const SizedBox(height: 16),
           const Text('Model', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
-          _buildModelTile('Whisper Large v3', 'High accuracy speech recognition', true),
-          _buildModelTile('Whisper Large v3 Turbo', '216x real-time speed', false),
+          _buildModelTile('whisper-1', 'High accuracy speech recognition', true),
+          _buildModelTile('whisper-large-v3', 'Open source version', false),
         ],
       ),
     );
@@ -215,12 +259,18 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
         side: BorderSide(color: isSelected ? colorScheme.primary : colorScheme.outlineVariant),
       ),
       child: ListTile(
-        onTap: () => setState(() => _selectedModel = name),
+        onTap: () {
+          setState(() => _selectedModel = name);
+          _saveSetting('stt_model', name);
+        },
         dense: true,
         leading: Radio<String>(
           value: name,
           groupValue: _selectedModel,
-          onChanged: (v) => setState(() => _selectedModel = v!),
+          onChanged: (v) {
+            setState(() => _selectedModel = v!);
+            _saveSetting('stt_model', v);
+          },
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(desc),
