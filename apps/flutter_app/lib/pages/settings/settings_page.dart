@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/app_settings_service.dart';
 import '../../main.dart';
 import 'language_selection_page.dart';
 import 'language_model_settings_page.dart';
@@ -110,8 +110,8 @@ class SettingsPage extends StatelessWidget {
             title: 'Reset Setup',
             subtitle: 'Show welcome screen again on next launch',
             onTap: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.remove('isSetupComplete');
+              final appSettings = AppSettingsService();
+              await appSettings.resetSetup();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Setup reset! App will show welcome page on next launch.')),
