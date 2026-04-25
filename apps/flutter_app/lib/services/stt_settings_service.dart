@@ -7,81 +7,109 @@ import '../models/api_model.dart';
 import 'model_provider_utils.dart';
 
 class STTSettingsService {
-  static const String _providerKey = 'flutter.stt_provider';
-  static const String _cloudProviderKey = 'flutter.stt_cloud_provider';
-  static const String _modelKey = 'flutter.stt_model';
-  static const String _apiKeyKey = 'flutter.stt_api_key';
-  static const String _endpointKey = 'flutter.stt_endpoint';
+  static const String _settingsKey = 'flutter.stt_settings';
+
+  Future<Map<String, dynamic>> _getSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString(_settingsKey);
+    if (str != null) {
+      try {
+        return jsonDecode(str) as Map<String, dynamic>;
+      } catch (_) {}
+    }
+    return {
+      'provider': 'cloud_providers',
+      'cloud_provider': 'OpenAI',
+      'providers': <String, dynamic>{},
+    };
+  }
+
+  Future<void> _saveSettings(Map<String, dynamic> settings) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_settingsKey, jsonEncode(settings));
+  }
+
+  String _normalizeProvider(String provider) {
+    return provider.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  }
+
+  Map<String, dynamic> _getProviderSettings(Map<String, dynamic> settings, String provider) {
+    final providers = settings['providers'] as Map<String, dynamic>? ?? {};
+    final normProvider = _normalizeProvider(provider);
+    return providers[normProvider] as Map<String, dynamic>? ?? {};
+  }
+
+  void _updateProviderSettings(Map<String, dynamic> settings, String provider, String key, dynamic value) {
+    final providers = settings['providers'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final normProvider = _normalizeProvider(provider);
+    final providerSettings = Map<String, dynamic>.from(providers[normProvider] as Map<String, dynamic>? ?? {});
+    providerSettings[key] = value;
+    providers[normProvider] = providerSettings;
+    settings['providers'] = providers;
+  }
 
   Future<String> getProvider() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_providerKey) ?? 'cloud_providers';
+    final settings = await _getSettings();
+    return settings['provider'] as String? ?? 'cloud_providers';
   }
 
   Future<void> setProvider(String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_providerKey, value);
+    final settings = await _getSettings();
+    settings['provider'] = value;
+    await _saveSettings(settings);
   }
 
   Future<String> getCloudProvider() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_cloudProviderKey) ?? 'OpenAI';
+    final settings = await _getSettings();
+    return settings['cloud_provider'] as String? ?? 'OpenAI';
   }
 
   Future<void> setCloudProvider(String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cloudProviderKey, value);
-  }
-
-  String _scopedKey(String baseKey, String provider) {
-    final normalizedProvider = provider.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-    return '${baseKey}_$normalizedProvider';
-  }
-
-  Future<String> _resolveProvider(String? provider) async {
-    return provider ?? await getCloudProvider();
+    final settings = await _getSettings();
+    settings['cloud_provider'] = value;
+    await _saveSettings(settings);
   }
 
   Future<String> getModel({String? provider}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final resolvedProvider = await _resolveProvider(provider);
-    return prefs.getString(_scopedKey(_modelKey, resolvedProvider)) ??
-        prefs.getString(_modelKey) ??
-        'whisper-1';
+    final settings = await _getSettings();
+    final resolvedProvider = provider ?? settings['cloud_provider'] as String? ?? 'OpenAI';
+    final providerSettings = _getProviderSettings(settings, resolvedProvider);
+    return providerSettings['model'] as String? ?? 'whisper-1';
   }
 
   Future<void> setModel(String value, {String? provider}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final resolvedProvider = await _resolveProvider(provider);
-    await prefs.setString(_scopedKey(_modelKey, resolvedProvider), value);
+    final settings = await _getSettings();
+    final resolvedProvider = provider ?? settings['cloud_provider'] as String? ?? 'OpenAI';
+    _updateProviderSettings(settings, resolvedProvider, 'model', value);
+    await _saveSettings(settings);
   }
 
   Future<String> getApiKey({String? provider}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final resolvedProvider = await _resolveProvider(provider);
-    return prefs.getString(_scopedKey(_apiKeyKey, resolvedProvider)) ??
-        prefs.getString(_apiKeyKey) ??
-        '';
+    final settings = await _getSettings();
+    final resolvedProvider = provider ?? settings['cloud_provider'] as String? ?? 'OpenAI';
+    final providerSettings = _getProviderSettings(settings, resolvedProvider);
+    return providerSettings['api_key'] as String? ?? '';
   }
 
   Future<void> setApiKey(String value, {String? provider}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final resolvedProvider = await _resolveProvider(provider);
-    await prefs.setString(_scopedKey(_apiKeyKey, resolvedProvider), value);
+    final settings = await _getSettings();
+    final resolvedProvider = provider ?? settings['cloud_provider'] as String? ?? 'OpenAI';
+    _updateProviderSettings(settings, resolvedProvider, 'api_key', value);
+    await _saveSettings(settings);
   }
 
   Future<String> getEndpoint({String? provider}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final resolvedProvider = await _resolveProvider(provider);
-    return prefs.getString(_scopedKey(_endpointKey, resolvedProvider)) ??
-        prefs.getString(_endpointKey) ??
-        '';
+    final settings = await _getSettings();
+    final resolvedProvider = provider ?? settings['cloud_provider'] as String? ?? 'OpenAI';
+    final providerSettings = _getProviderSettings(settings, resolvedProvider);
+    return providerSettings['endpoint'] as String? ?? '';
   }
 
   Future<void> setEndpoint(String value, {String? provider}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final resolvedProvider = await _resolveProvider(provider);
-    await prefs.setString(_scopedKey(_endpointKey, resolvedProvider), value);
+    final settings = await _getSettings();
+    final resolvedProvider = provider ?? settings['cloud_provider'] as String? ?? 'OpenAI';
+    _updateProviderSettings(settings, resolvedProvider, 'endpoint', value);
+    await _saveSettings(settings);
   }
 
   Future<ModelFetchResult> fetchAvailableModels({
