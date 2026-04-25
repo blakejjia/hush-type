@@ -10,6 +10,7 @@ class MainProviderTile extends StatelessWidget {
   final bool isSelected;
   final bool isActive;
   final bool enabled;
+  final bool showComingSoon;
 
   const MainProviderTile({
     super.key,
@@ -20,6 +21,7 @@ class MainProviderTile extends StatelessWidget {
     required this.isSelected,
     required this.isActive,
     this.enabled = true,
+    this.showComingSoon = false,
   });
 
   @override
@@ -37,10 +39,21 @@ class MainProviderTile extends StatelessWidget {
       ),
       child: ListTile(
         enabled: enabled,
-        leading: Icon(icon, color: isSelected ? colorScheme.primary : null),
+        leading: Icon(
+          icon, 
+          color: !enabled 
+              ? colorScheme.outline 
+              : (isSelected ? colorScheme.primary : null),
+        ),
         title: Row(
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              title, 
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: enabled ? null : colorScheme.outline,
+              ),
+            ),
             if (isActive) ...[
               const SizedBox(width: 8),
               Container(
@@ -51,10 +64,33 @@ class MainProviderTile extends StatelessWidget {
                 ),
                 child: Text('Active', style: TextStyle(fontSize: 10, color: colorScheme.primary, fontWeight: FontWeight.bold)),
               ),
-            ]
+            ],
+            if (showComingSoon) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: colorScheme.outline.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Coming soon', 
+                  style: TextStyle(
+                    fontSize: 10, 
+                    color: colorScheme.outline, 
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
-        subtitle: Text(subtitle),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: enabled ? null : colorScheme.outline,
+          ),
+        ),
         trailing: Radio<String>(
           value: id,
           toggleable: false,

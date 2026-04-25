@@ -40,7 +40,7 @@
         <!-- 注册 IME Service -->
         <service
             android:name=".VoiceInputMethodService"
-            android:label="AI Voice Keyboard"
+            android:label="hashtype"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:exported="true">
             <intent-filter>

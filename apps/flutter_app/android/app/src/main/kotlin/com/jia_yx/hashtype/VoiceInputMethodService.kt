@@ -4,9 +4,9 @@ import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import com.google.android.material.color.DynamicColors
 
 class VoiceInputMethodService : InputMethodService(), VoiceImeViewModel.Listener {
-
     private lateinit var viewModel: VoiceImeViewModel
     private var imeView: VoiceImeView? = null
 
@@ -17,9 +17,13 @@ class VoiceInputMethodService : InputMethodService(), VoiceImeViewModel.Listener
     }
 
     override fun onCreateInputView(): View {
-        val view = VoiceImeView(this)
+        val themedContext = DynamicColors.wrapContextIfAvailable(this, com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)
+        val view = VoiceImeView(themedContext)
         view.setOnMicClickListener {
             viewModel.handleMicClick()
+        }
+        view.setOnBackClickListener {
+            switchToPreviousKeyboard()
         }
         imeView = view
         return view
@@ -58,5 +62,21 @@ class VoiceInputMethodService : InputMethodService(), VoiceImeViewModel.Listener
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
+    }
+
+    private fun switchToPreviousKeyboard() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                switchToPreviousInputMethod()
+            } else {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                imm.switchToLastInputMethod(window?.window?.attributes?.token)
+            }
+        } catch (e: Exception) {
+            // Fallback or log error
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                shouldOfferSwitchingToNextInputMethod()
+            }
+        }
     }
 }

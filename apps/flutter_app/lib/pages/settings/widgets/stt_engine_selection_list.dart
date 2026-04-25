@@ -57,10 +57,12 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
               MainProviderTile(
                 id: 'cloud',
                 title: 'Cloud',
-                subtitle: 'Reliable accuracy. No setup needed.',
+                subtitle: 'Reliable accuracy. (Not ready yet)',
                 icon: Icons.cloud_outlined,
                 isSelected: _providerController.selectedProvider == 'cloud',
                 isActive: _providerController.selectedProvider == 'cloud',
+                enabled: false,
+                showComingSoon: true,
               ),
               MainProviderTile(
                 id: 'cloud_providers',
