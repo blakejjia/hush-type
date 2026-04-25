@@ -14,7 +14,11 @@ class STTSettingsService {
     final str = prefs.getString(_settingsKey);
     if (str != null) {
       try {
-        return jsonDecode(str) as Map<String, dynamic>;
+        final settings = jsonDecode(str) as Map<String, dynamic>;
+        if (settings['runtime'] is! Map<String, dynamic>) {
+          await _saveSettings(settings);
+        }
+        return settings;
       } catch (_) {}
     }
     return {
@@ -26,6 +30,7 @@ class STTSettingsService {
 
   Future<void> _saveSettings(Map<String, dynamic> settings) async {
     final prefs = await SharedPreferences.getInstance();
+    settings['runtime'] = _buildRuntimeConfig(settings);
     await prefs.setString(_settingsKey, jsonEncode(settings));
   }
 
@@ -206,5 +211,57 @@ class STTSettingsService {
     }
 
     return 'Model lookup failed with status ${response.statusCode}.';
+  }
+
+  Map<String, dynamic> _buildRuntimeConfig(Map<String, dynamic> settings) {
+    final providerMode = settings['provider'] as String? ?? 'cloud_providers';
+    final cloudProvider = settings['cloud_provider'] as String? ?? 'OpenAI';
+    final providerSettings = _getProviderSettings(settings, cloudProvider);
+    final apiKey = (providerSettings['api_key'] as String? ?? '').trim();
+    final customEndpoint = (providerSettings['endpoint'] as String? ?? '').trim();
+    final model = (providerSettings['model'] as String? ?? 'whisper-1').trim();
+
+    final requestType = ModelProviderUtils.getSttRequestType(cloudProvider);
+    final endpoint = cloudProvider == 'Custom'
+        ? ModelProviderUtils.buildTranscriptionsEndpoint(customEndpoint)
+        : ModelProviderUtils.getEndpointForProvider(cloudProvider, isSTT: true);
+    final auth = ModelProviderUtils.getAuthConfig(cloudProvider);
+
+    String statusMessage = 'Ready';
+    bool ready = true;
+
+    if (providerMode != 'cloud_providers') {
+      ready = false;
+      statusMessage = 'Please configurate first before using.';
+    } else if (apiKey.isEmpty) {
+      ready = false;
+      statusMessage = 'Please configurate first before using.';
+    } else {
+      final keyError = ModelProviderUtils.getApiKeyValidationError(cloudProvider, apiKey);
+      if (keyError != null) {
+        ready = false;
+        statusMessage = keyError;
+      } else if (model.isEmpty) {
+        ready = false;
+        statusMessage = 'Please select a speech-to-text model.';
+      } else if (endpoint.isEmpty || requestType.isEmpty) {
+        ready = false;
+        statusMessage = 'Please configurate first before using.';
+      }
+    }
+
+    return {
+      'ready': ready,
+      'status_message': statusMessage,
+      'provider_mode': providerMode,
+      'cloud_provider': cloudProvider,
+      'request_type': requestType,
+      'response_text_path': 'text',
+      'api_key': apiKey,
+      'model': model,
+      'endpoint': endpoint,
+      'custom_endpoint': customEndpoint,
+      'auth': auth,
+    };
   }
 }

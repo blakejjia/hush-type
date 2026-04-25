@@ -32,7 +32,11 @@ ATTENTION: DO NOT MODIFY the user's sentences, just reformat and clean the words
     final str = prefs.getString(_settingsKey);
     if (str != null) {
       try {
-        return jsonDecode(str) as Map<String, dynamic>;
+        final settings = jsonDecode(str) as Map<String, dynamic>;
+        if (settings['runtime'] is! Map<String, dynamic>) {
+          await _saveSettings(settings);
+        }
+        return settings;
       } catch (_) {}
     }
     return {
@@ -45,6 +49,7 @@ ATTENTION: DO NOT MODIFY the user's sentences, just reformat and clean the words
 
   Future<void> _saveSettings(Map<String, dynamic> settings) async {
     final prefs = await SharedPreferences.getInstance();
+    settings['runtime'] = _buildRuntimeConfig(settings);
     await prefs.setString(_settingsKey, jsonEncode(settings));
   }
 
@@ -308,5 +313,68 @@ ATTENTION: DO NOT MODIFY the user's sentences, just reformat and clean the words
     }
 
     return 'Model lookup failed with status ${response.statusCode}.';
+  }
+
+  Map<String, dynamic> _buildRuntimeConfig(Map<String, dynamic> settings) {
+    final enabled = settings['enabled'] as bool? ?? true;
+    final providerMode = settings['provider'] as String? ?? 'cloud_providers';
+    final cloudProvider = settings['cloud_provider'] as String? ?? 'OpenAI';
+    final providerSettings = _getProviderSettings(settings, cloudProvider);
+    final apiKey = (providerSettings['api_key'] as String? ?? '').trim();
+    final customEndpoint = (providerSettings['endpoint'] as String? ?? '').trim();
+    final model = (providerSettings['model'] as String? ?? '').trim();
+    final systemPrompt =
+        (settings['system_prompt'] as String? ?? defaultSystemPrompt).trim();
+
+    final requestType = ModelProviderUtils.getLlmRequestType(cloudProvider);
+    final endpoint = switch (cloudProvider) {
+      'Anthropic' => 'https://api.anthropic.com/v1/messages',
+      'Google Gemini' => ModelProviderUtils.buildGeminiGenerateContentEndpoint(model),
+      'Custom' => ModelProviderUtils.buildChatCompletionsEndpoint(customEndpoint),
+      _ => ModelProviderUtils.buildChatCompletionsEndpoint(
+          ModelProviderUtils.getEndpointForProvider(cloudProvider),
+        ),
+    };
+    final auth = ModelProviderUtils.getAuthConfig(cloudProvider);
+
+    String statusMessage = enabled ? 'Ready' : 'Disabled';
+    bool ready = enabled;
+
+    if (!enabled) {
+      ready = false;
+    } else if (providerMode != 'cloud_providers') {
+      ready = false;
+      statusMessage = 'Language model cleanup is not configured.';
+    } else if (apiKey.isEmpty) {
+      ready = false;
+      statusMessage = 'Language model cleanup is not configured.';
+    } else {
+      final keyError = ModelProviderUtils.getApiKeyValidationError(cloudProvider, apiKey);
+      if (keyError != null) {
+        ready = false;
+        statusMessage = keyError;
+      } else if (model.isEmpty) {
+        ready = false;
+        statusMessage = 'Please select a language model.';
+      } else if (endpoint.isEmpty || requestType.isEmpty) {
+        ready = false;
+        statusMessage = 'Language model cleanup is not configured.';
+      }
+    }
+
+    return {
+      'enabled': enabled,
+      'ready': ready,
+      'status_message': statusMessage,
+      'provider_mode': providerMode,
+      'cloud_provider': cloudProvider,
+      'request_type': requestType,
+      'api_key': apiKey,
+      'model': model,
+      'endpoint': endpoint,
+      'custom_endpoint': customEndpoint,
+      'system_prompt': systemPrompt,
+      'auth': auth,
+    };
   }
 }

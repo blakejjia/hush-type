@@ -91,6 +91,126 @@ class ModelProviderUtils {
     }
   }
 
+  static String getSttRequestType(String provider) {
+    switch (provider) {
+      case 'OpenAI':
+      case 'Groq':
+      case 'Mistral':
+      case 'Custom':
+        return 'openai_audio_transcriptions';
+      default:
+        return '';
+    }
+  }
+
+  static String getLlmRequestType(String provider) {
+    switch (provider) {
+      case 'Anthropic':
+        return 'anthropic_messages';
+      case 'Google Gemini':
+        return 'gemini_generate_content';
+      case 'OpenAI':
+      case 'Groq':
+      case 'Custom':
+        return 'openai_chat_completions';
+      default:
+        return '';
+    }
+  }
+
+  static Map<String, String> getAuthConfig(String provider) {
+    switch (provider) {
+      case 'Anthropic':
+        return const {
+          'type': 'header',
+          'header': 'x-api-key',
+          'prefix': '',
+        };
+      case 'Google Gemini':
+        return const {
+          'type': 'query',
+          'query_param': 'key',
+          'prefix': '',
+        };
+      default:
+        return const {
+          'type': 'bearer',
+          'header': 'Authorization',
+          'prefix': 'Bearer ',
+        };
+    }
+  }
+
+  static String buildTranscriptionsEndpoint(String rawEndpoint) {
+    final endpoint = rawEndpoint.trim();
+    if (endpoint.isEmpty) {
+      return '';
+    }
+
+    final normalized = endpoint.endsWith('/')
+        ? endpoint.substring(0, endpoint.length - 1)
+        : endpoint;
+
+    if (normalized.endsWith('/audio/transcriptions')) {
+      return normalized;
+    }
+
+    if (normalized.endsWith('/models')) {
+      return '${normalized.substring(0, normalized.length - '/models'.length)}/audio/transcriptions';
+    }
+
+    if (normalized.endsWith('/chat/completions')) {
+      return '${normalized.substring(0, normalized.length - '/chat/completions'.length)}/audio/transcriptions';
+    }
+
+    if (normalized.endsWith('/transcriptions')) {
+      return normalized;
+    }
+
+    return '$normalized/audio/transcriptions';
+  }
+
+  static String buildChatCompletionsEndpoint(String rawEndpoint) {
+    final endpoint = rawEndpoint.trim();
+    if (endpoint.isEmpty) {
+      return '';
+    }
+
+    final normalized = endpoint.endsWith('/')
+        ? endpoint.substring(0, endpoint.length - 1)
+        : endpoint;
+
+    if (normalized.endsWith('/chat/completions')) {
+      return normalized;
+    }
+
+    if (normalized.endsWith('/models')) {
+      return '${normalized.substring(0, normalized.length - '/models'.length)}/chat/completions';
+    }
+
+    if (normalized.endsWith('/audio/transcriptions')) {
+      return '${normalized.substring(0, normalized.length - '/audio/transcriptions'.length)}/chat/completions';
+    }
+
+    if (normalized.endsWith('/transcriptions')) {
+      return '${normalized.substring(0, normalized.length - '/transcriptions'.length)}/chat/completions';
+    }
+
+    return '$normalized/chat/completions';
+  }
+
+  static String buildGeminiGenerateContentEndpoint(String model) {
+    final trimmedModel = model.trim();
+    if (trimmedModel.isEmpty) {
+      return '';
+    }
+
+    final normalizedModel = trimmedModel.startsWith('models/')
+        ? trimmedModel.substring('models/'.length)
+        : trimmedModel;
+    return 'https://generativelanguage.googleapis.com/v1beta/models/$normalizedModel:generateContent';
+  }
+
   static String buildModelsEndpoint(String rawEndpoint) {
     final endpoint = rawEndpoint.trim();
     if (endpoint.isEmpty) {
