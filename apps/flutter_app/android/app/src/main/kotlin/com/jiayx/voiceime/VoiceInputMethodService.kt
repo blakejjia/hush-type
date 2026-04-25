@@ -56,7 +56,7 @@ class VoiceInputMethodService : InputMethodService() {
 
         val layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            setBackgroundColor(android.graphics.Color.parseColor("#2D2D2D"))
+            setBackgroundColor(android.graphics.Color.parseColor("#121212")) // Material Dark Surface
             gravity = android.view.Gravity.CENTER
             layoutParams = android.view.ViewGroup.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -68,8 +68,9 @@ class VoiceInputMethodService : InputMethodService() {
 
         tvStatus = TextView(this).apply {
             text = "Ready to record"
-            setTextColor(android.graphics.Color.WHITE)
-            textSize = 20f
+            setTextColor(android.graphics.Color.parseColor("#E3E3E3"))
+            textSize = 18f
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             setPadding(0, 0, 0, (30 * density).toInt())
             gravity = android.view.Gravity.CENTER
         }
@@ -77,13 +78,24 @@ class VoiceInputMethodService : InputMethodService() {
         btnMic = android.widget.ImageButton(this).apply {
             setImageResource(android.R.drawable.ic_btn_speak_now)
             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            val btnSize = (90 * density).toInt()
+            val btnSize = (80 * density).toInt()
             layoutParams = android.widget.LinearLayout.LayoutParams(btnSize, btnSize)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                elevation = 6f * density
+            }
 
-            background = android.graphics.drawable.GradientDrawable().apply {
+            val normalDrawable = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 setColor(android.graphics.Color.parseColor("#404040"))
             }
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val rippleColor = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#40FFFFFF"))
+                background = android.graphics.drawable.RippleDrawable(rippleColor, normalDrawable, null)
+            } else {
+                background = normalDrawable
+            }
+            
             setOnClickListener { handleMicClick() }
         }
 
@@ -635,7 +647,7 @@ class VoiceInputMethodService : InputMethodService() {
             isProcessing = false
             updateMicVisualState()
             tvStatus.text = message
-            mainHandler.postDelayed({ resetUI() }, 1800)
+            mainHandler.postDelayed({ resetUI() }, 3000)
         }
     }
 
@@ -644,7 +656,7 @@ class VoiceInputMethodService : InputMethodService() {
             isProcessing = false
             updateMicVisualState()
             tvStatus.text = message
-            mainHandler.postDelayed({ resetUI() }, 2600)
+            mainHandler.postDelayed({ resetUI() }, 4500)
         }
     }
 
@@ -656,13 +668,21 @@ class VoiceInputMethodService : InputMethodService() {
 
     private fun updateMicVisualState() {
         val color = when {
-            isRecording -> android.graphics.Color.RED
-            isProcessing -> android.graphics.Color.parseColor("#606060")
-            else -> android.graphics.Color.parseColor("#404040")
+            isRecording -> android.graphics.Color.parseColor("#F44336") // Material Red
+            isProcessing -> android.graphics.Color.parseColor("#FFB300") // Material Amber
+            else -> android.graphics.Color.parseColor("#4285F4") // Material Blue
         }
 
         val sttReady = ImeSettingsResolver.loadSTTConfig(this).ready
-        (btnMic.background as? android.graphics.drawable.GradientDrawable)?.setColor(color)
+        
+        val bg = btnMic.background
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && bg is android.graphics.drawable.RippleDrawable) {
+            val gradientDrawable = bg.getDrawable(0) as? android.graphics.drawable.GradientDrawable
+            gradientDrawable?.setColor(color)
+        } else if (bg is android.graphics.drawable.GradientDrawable) {
+            bg.setColor(color)
+        }
+        
         btnMic.isEnabled = !isProcessing && sttReady
         btnMic.alpha = when {
             isProcessing -> 0.7f

@@ -5,7 +5,7 @@ import 'ai_provider_registry.dart';
 class STTSettingsService extends AiFeatureSettingsService {
   STTSettingsService()
       : super(
-          settingsKey: 'flutter.stt_settings',
+          settingsKey: 'stt_settings',
           feature: AiProviderFeature.stt,
         );
 
@@ -22,7 +22,7 @@ class STTSettingsService extends AiFeatureSettingsService {
   String get defaultModel => 'whisper-1';
 
   @override
-  String buildNotConfiguredMessage() => 'Please configurate first before using.';
+  String buildNotConfiguredMessage() => 'Please configure first before using.';
 
   @override
   List<ApiModel> transformFetchedModels(List<ApiModel> models) {

@@ -68,10 +68,10 @@ object ImeSettingsResolver {
 
         if (providerMode != "cloud_providers") {
             ready = false
-            statusMessage = "Please configurate first before using."
+            statusMessage = "Please configure first before using."
         } else if (apiKey.isBlank()) {
             ready = false
-            statusMessage = "Please configurate first before using."
+            statusMessage = "Please configure first before using."
         } else {
             val keyError = getApiKeyValidationError(cloudProvider, apiKey)
             when {
@@ -85,7 +85,7 @@ object ImeSettingsResolver {
                 }
                 endpoint.isBlank() || requestType.isBlank() -> {
                     ready = false
-                    statusMessage = "Please configurate first before using."
+                    statusMessage = "Please configure first before using."
                 }
             }
         }

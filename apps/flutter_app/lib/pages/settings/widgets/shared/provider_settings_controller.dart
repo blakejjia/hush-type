@@ -56,10 +56,12 @@ class ProviderSettingsController extends ChangeNotifier {
     modelsLoaded = false;
     isLoadingModels = false;
     isApiKeyVerified = false;
-    errorText = AiProviderRegistry.get(provider).validateApiKey(apiKeyController.text);
+    final spec = AiProviderRegistry.get(provider);
+    final keyError = spec.validateApiKey(apiKeyController.text);
+    errorText = keyError;
     notifyListeners();
 
-    if (AiProviderRegistry.get(provider).validateApiKey(apiKeyController.text) == null) {
+    if (keyError == null) {
       await fetchModels();
     }
   }

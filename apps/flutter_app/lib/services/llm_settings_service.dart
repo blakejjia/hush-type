@@ -4,7 +4,7 @@ import 'ai_provider_registry.dart';
 class LLMSettingsService extends AiFeatureSettingsService {
   LLMSettingsService()
       : super(
-          settingsKey: 'flutter.llm_settings',
+          settingsKey: 'llm_settings',
           feature: AiProviderFeature.llm,
         );
 
