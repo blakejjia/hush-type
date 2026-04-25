@@ -310,8 +310,8 @@ class VoiceInputMethodService : InputMethodService() {
         val request = Request.Builder()
             .url(config.endpoint)
             .post(requestBody)
-            .applyAuth(config.authType, config.authHeader, config.authPrefix, config.apiKey)
             .build()
+            .withAuth(config)
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -393,8 +393,8 @@ class VoiceInputMethodService : InputMethodService() {
             .url(config.endpoint)
             .header("Content-Type", "application/json")
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .applyAuth(config.authType, config.authHeader, config.authPrefix, config.apiKey)
             .build()
+            .withAuth(config)
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -453,8 +453,8 @@ class VoiceInputMethodService : InputMethodService() {
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .applyAuth(config.authType, config.authHeader, config.authPrefix, config.apiKey)
             .build()
+            .withAuth(config)
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -564,18 +564,30 @@ class VoiceInputMethodService : InputMethodService() {
 
         return ProviderConfig(
             ready = runtime?.optBoolean("ready", false) ?: false,
-            statusMessage = runtime?.optString("status_message").orFallback(
-                null,
+            statusMessage = runtime.getStringOrNull("status_message").orFallback(
+                settings.getStringOrNull("status_message"),
                 "Please configurate first before using."
             ),
-            requestType = runtime?.optString("request_type").orFallback(null, ""),
-            apiKey = runtime?.optString("api_key").orFallback(null, ""),
-            endpoint = runtime?.optString("endpoint").orFallback(null, ""),
-            model = runtime?.optString("model").orFallback(null, ""),
-            authType = auth?.optString("type").orFallback(null, "bearer"),
-            authHeader = auth?.optString("header").orFallback(null, "Authorization"),
-            authPrefix = auth?.optString("prefix").orFallback(null, "Bearer "),
-            authQueryParam = auth?.optString("query_param").orFallback(null, ""),
+            requestType = runtime.getStringOrNull("request_type").orFallback(
+                settings.getStringOrNull("request_type"),
+                ""
+            ),
+            apiKey = runtime.getStringOrNull("api_key").orFallback(
+                settings.getStringOrNull("api_key"),
+                ""
+            ),
+            endpoint = runtime.getStringOrNull("endpoint").orFallback(
+                settings.getStringOrNull("endpoint"),
+                ""
+            ),
+            model = runtime.getStringOrNull("model").orFallback(
+                settings.getStringOrNull("model"),
+                ""
+            ),
+            authType = auth.getStringOrNull("type").orFallback(null, "bearer"),
+            authHeader = auth.getStringOrNull("header").orFallback(null, "Authorization"),
+            authPrefix = auth.getStringOrNull("prefix").orFallback(null, "Bearer "),
+            authQueryParam = auth.getStringOrNull("query_param").orFallback(null, ""),
         )
     }
 
@@ -589,22 +601,34 @@ class VoiceInputMethodService : InputMethodService() {
             enabled = runtime?.optBoolean("enabled", settings?.optBoolean("enabled", true) ?: true)
                 ?: true,
             ready = runtime?.optBoolean("ready", false) ?: false,
-            statusMessage = runtime?.optString("status_message").orFallback(
-                null,
+            statusMessage = runtime.getStringOrNull("status_message").orFallback(
+                settings.getStringOrNull("status_message"),
                 "Language model cleanup is not configured."
             ),
-            requestType = runtime?.optString("request_type").orFallback(null, ""),
-            apiKey = runtime?.optString("api_key").orFallback(null, ""),
-            endpoint = runtime?.optString("endpoint").orFallback(null, ""),
-            model = runtime?.optString("model").orFallback(null, ""),
-            systemPrompt = runtime?.optString("system_prompt").orFallback(
-                null,
+            requestType = runtime.getStringOrNull("request_type").orFallback(
+                settings.getStringOrNull("request_type"),
+                ""
+            ),
+            apiKey = runtime.getStringOrNull("api_key").orFallback(
+                settings.getStringOrNull("api_key"),
+                ""
+            ),
+            endpoint = runtime.getStringOrNull("endpoint").orFallback(
+                settings.getStringOrNull("endpoint"),
+                ""
+            ),
+            model = runtime.getStringOrNull("model").orFallback(
+                settings.getStringOrNull("model"),
+                ""
+            ),
+            systemPrompt = runtime.getStringOrNull("system_prompt").orFallback(
+                settings.getStringOrNull("system_prompt"),
                 DEFAULT_SYSTEM_PROMPT
             ),
-            authType = auth?.optString("type").orFallback(null, "bearer"),
-            authHeader = auth?.optString("header").orFallback(null, "Authorization"),
-            authPrefix = auth?.optString("prefix").orFallback(null, "Bearer "),
-            authQueryParam = auth?.optString("query_param").orFallback(null, ""),
+            authType = auth.getStringOrNull("type").orFallback(null, "bearer"),
+            authHeader = auth.getStringOrNull("header").orFallback(null, "Authorization"),
+            authPrefix = auth.getStringOrNull("prefix").orFallback(null, "Bearer "),
+            authQueryParam = auth.getStringOrNull("query_param").orFallback(null, ""),
         )
     }
 
@@ -765,9 +789,8 @@ class VoiceInputMethodService : InputMethodService() {
     }
 
     private fun String?.orFallback(fallback: String?, defaultValue: String): String {
-        val primary = this?.trim().orEmpty()
-        if (primary.isNotEmpty()) {
-            return primary
+        if (this != null) {
+            return this
         }
 
         val secondary = fallback?.trim().orEmpty()
@@ -782,21 +805,8 @@ class VoiceInputMethodService : InputMethodService() {
         return getString("flutter.$key", null) ?: getString(key, null)
     }
 
-    private fun Request.Builder.applyAuth(
-        authType: String,
-        authHeader: String,
-        authPrefix: String,
-        apiKey: String,
-    ): Request.Builder {
-        return when (authType) {
-            "header", "bearer" -> {
-                if (apiKey.isNotBlank() && authHeader.isNotBlank()) {
-                    header(authHeader, "$authPrefix$apiKey")
-                }
-                this
-            }
-            else -> this
-        }
+    private fun JSONObject?.getStringOrNull(key: String): String? {
+        return if (this?.has(key) == true) this.optString(key) else null
     }
 
     private fun okhttp3.HttpUrl.Builder.applyQueryAuth(
@@ -808,6 +818,55 @@ class VoiceInputMethodService : InputMethodService() {
             addQueryParameter(authQueryParam, apiKey)
         }
         return this
+    }
+
+    private fun Request.withAuth(config: ProviderConfig): Request {
+        return withAuth(
+            config.authType,
+            config.authHeader,
+            config.authPrefix,
+            config.authQueryParam,
+            config.apiKey
+        )
+    }
+
+    private fun Request.withAuth(config: LLMConfig): Request {
+        return withAuth(
+            config.authType,
+            config.authHeader,
+            config.authPrefix,
+            config.authQueryParam,
+            config.apiKey
+        )
+    }
+
+    private fun Request.withAuth(
+        authType: String,
+        authHeader: String,
+        authPrefix: String,
+        authQueryParam: String,
+        apiKey: String,
+    ): Request {
+        if (apiKey.isBlank()) return this
+
+        return when (authType) {
+            "header", "bearer" -> {
+                if (authHeader.isNotBlank()) {
+                    this.newBuilder()
+                        .header(authHeader, "$authPrefix$apiKey")
+                        .build()
+                } else this
+            }
+            "query" -> {
+                if (authQueryParam.isNotBlank()) {
+                    val newUrl = this.url.newBuilder()
+                        .addQueryParameter(authQueryParam, apiKey)
+                        .build()
+                    this.newBuilder().url(newUrl).build()
+                } else this
+            }
+            else -> this
+        }
     }
 
     companion object {
