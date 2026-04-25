@@ -1,0 +1,16 @@
+# ==========================================
+# Private Backend & Configuration (DO NOT COMMIT)
+# ==========================================
+functions/
+firebase.json
+.firebaserc
+.env
+.env.*
+
+# ==========================================
+# Standard Ignore Rules for Root Repo
+# ==========================================
+.DS_Store
+.idea/
+.vscode/
+*.iml
