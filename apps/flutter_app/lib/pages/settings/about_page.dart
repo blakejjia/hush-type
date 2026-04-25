@@ -4,10 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
-  static const String githubUrl = 'https://github.com/blakejjia/speech-to-text-board-android';
+  static const String githubUrl =
+      'https://github.com/blakejjia/speech-to-text-board-android';
+  static const String privacyUrl =
+      'https://www.jia-yx.com/projects/hashtype/privacy';
 
-  Future<void> _launchUrl() async {
-    final uri = Uri.parse(githubUrl);
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -18,10 +21,7 @@ class AboutPage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('About'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('About'), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [
@@ -51,7 +51,7 @@ class AboutPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Voice IME',
+                  'hashtype',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -59,9 +59,9 @@ class AboutPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Version 1.0.0',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.outline,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
                 ),
               ],
             ),
@@ -70,21 +70,24 @@ class AboutPage extends StatelessWidget {
           _buildInfoCard(
             context,
             title: 'Our Mission',
-            content: 'Providing a seamless, high-performance voice transcription experience directly from your keyboard.',
+            content:
+                'Providing a seamless, high-performance voice transcription experience directly from your keyboard.',
             icon: Icons.auto_awesome,
           ),
           const SizedBox(height: 16),
           _buildInfoCard(
             context,
             title: 'Completely Free',
-            content: 'This app is and will always be completely free to use. No hidden subscriptions or forced ads.',
+            content:
+                'This app is and will always be completely free to use. No hidden subscriptions or forced ads.',
             icon: Icons.volunteer_activism,
           ),
           const SizedBox(height: 16),
           _buildInfoCard(
             context,
             title: 'Fully Customizable',
-            content: 'Configure your own AI providers, endpoints, and models. Tailor the experience to your exact needs.',
+            content:
+                'Configure your own AI providers, endpoints, and models. Tailor the experience to your exact needs.',
             icon: Icons.tune,
           ),
           const SizedBox(height: 32),
@@ -92,9 +95,9 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 32),
           Text(
             'Open Source',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Card(
@@ -104,7 +107,7 @@ class AboutPage extends StatelessWidget {
               side: BorderSide(color: colorScheme.outlineVariant),
             ),
             child: InkWell(
-              onTap: _launchUrl,
+              onTap: () => _launchUrl(githubUrl),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -146,14 +149,67 @@ class AboutPage extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 32),
+          Text(
+            'Legal',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: colorScheme.outlineVariant),
+            ),
+            child: InkWell(
+              onTap: () => _launchUrl(privacyUrl),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.privacy_tip_outlined),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Privacy Policy',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            'View our privacy commitments',
+                            style: TextStyle(
+                              color: colorScheme.outline,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.open_in_new, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 48),
           Center(
             child: Text(
-              '© 2024 Voice IME Contributors',
-              style: TextStyle(
-                color: colorScheme.outline,
-                fontSize: 12,
-              ),
+              '© 2024 hashtype Contributors',
+              style: TextStyle(color: colorScheme.outline, fontSize: 12),
             ),
           ),
           const SizedBox(height: 24),
@@ -179,11 +235,7 @@ class AboutPage extends StatelessWidget {
             color: colorScheme.primaryContainer.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: colorScheme.primary,
-          ),
+          child: Icon(icon, size: 20, color: colorScheme.primary),
         ),
         const SizedBox(width: 16),
         Expanded(

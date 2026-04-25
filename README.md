@@ -8,7 +8,36 @@
 
 **Hashtype** is an open-source Android Voice Typing Keyboard (IME) designed for users who want complete control over their speech-to-text (STT) pipeline.
 
-Unlike standard keyboards that lock you into a single provider, Hashtype allows you to bring your own API endpoints and layer Large Language Models (LLMs) on top of your transcripts for perfect, context-aware results.
+Unlike standard keyboards that lock you into a single provider, Hashtype allows you to bring your own API endpoints and layer Large Language Models (LLMs) on top of your transcripts for perfect, context-aware results. System prompts for cleaning the text is also customizable, as well as the endpoint.
+
+---
+
+## 🚀 Setup & Usage
+
+1. **Download & Install:**
+   - Download the latest APK from the [Releases](https://github.com/blakejjia/speech-to-text-board-android/releases) page and install it on your Android device.
+2. **Configure Providers:**
+   - Open the **Hashtype** app from your launcher.
+   - Go to **STT Settings** and enter your endpoint and API key (e.g., OpenAI Whisper).
+   - Go to **LLM Settings**, enable "AI Cleaning", and set your system prompt (optional but recommended).
+3. **Enable Keyboard:**
+   - Go to Android Settings > Languages & Input > On-screen keyboard > Manage keyboards.
+   - Turn on **Hashtype**.
+4. **Start Typing:**
+   - In any app, switch your input method to **Hashtype**.
+   - Tap the microphone icon to start recording, speak, and tap again to transcribe and insert text.
+
+---
+
+## 📸 Screenshots
+
+|             Keyboard Ready             |                   Settings                   |                       STT Config                       |
+| :------------------------------------: | :------------------------------------------: | :----------------------------------------------------: |
+| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) |
+
+|                             LLM Config                              |                 Final Result                 |
+| :-----------------------------------------------------------------: | :------------------------------------------: |
+| ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) |
 
 ---
 
@@ -25,14 +54,6 @@ Unlike standard keyboards that lock you into a single provider, Hashtype allows 
 
 ---
 
-## 📸 Screenshots
-
-|             Keyboard Ready             |                   Settings                   |                       STT Config                       |                             LLM Config                              |                 Final Result                 |
-| :------------------------------------: | :------------------------------------------: | :----------------------------------------------------: | :-----------------------------------------------------------------: | :------------------------------------------: |
-| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) | ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) |
-
----
-
 ## 🛠️ How it Works
 
 1. **Record:** Tap the mic and speak. The keyboard records high-quality audio.
@@ -40,36 +61,6 @@ Unlike standard keyboards that lock you into a single provider, Hashtype allows 
 3. **Refine (Optional):** The transcript is sent to your chosen **LLM Provider** (e.g., GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro).
 4. **Clean:** The LLM follows your **Custom System Prompt** to polish the text (remove "uhm/ah", fix typos, apply formatting).
 5. **Input:** The final, perfect text is committed directly into the text field.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Android device running Android 8.0 (API 26) or higher.
-- (For Developers) Flutter SDK and Android Studio.
-
-### Setup
-
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/blakejjia/speech-to-text-board-android.git
-   ```
-2. **Build the app:**
-   ```bash
-   cd apps/flutter_app
-   flutter pub get
-   flutter run --release
-   ```
-3. **Configure Providers:**
-   - Open the **Hashtype** app from your launcher.
-   - Go to **STT Settings** and enter your endpoint and API key.
-   - Go to **LLM Settings**, enable "AI Cleaning", and set your system prompt.
-4. **Enable Keyboard:**
-   - Go to Android Settings > Languages & Input > On-screen keyboard > Manage keyboards.
-   - Turn on **Hashtype**.
-   - Switch to Hashtype whenever you need to voice type!
 
 ---
 

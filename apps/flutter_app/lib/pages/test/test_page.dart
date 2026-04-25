@@ -30,7 +30,7 @@ class TestPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tap the input field below to activate the Voice IME keyboard. Speak naturally to see the results.',
+                      'Tap the input field below to activate the hashtype keyboard. Speak naturally to see the results.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: colorScheme.onSurfaceVariant),
                     ),

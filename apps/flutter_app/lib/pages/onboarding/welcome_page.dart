@@ -12,7 +12,7 @@ class WelcomePage extends StatefulWidget {
 }
 
 class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
-  static const platform = MethodChannel('com.jiayx.voiceime/ime');
+  static const platform = MethodChannel('com.jia_yx.hashtype/ime');
   
   bool _hasMicPermission = false;
   bool _isIMEEnabled = false;
@@ -101,7 +101,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
               children: [
                 const Spacer(),
                 Text(
-                  'Welcome to\nVoice IME',
+                  'Welcome to\nhashtype',
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
@@ -129,7 +129,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
                   context,
                   index: 2,
                   title: 'Enable Keyboard',
-                  subtitle: 'Turn on Voice IME in your system settings.',
+                  subtitle: 'Turn on hashtype in your system settings.',
                   isDone: _isIMEEnabled,
                   onTap: _openIMESettings,
                 ),

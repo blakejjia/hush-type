@@ -22,13 +22,13 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool isSetupComplete = prefs.getBool('isSetupComplete') ?? false;
   
-  runApp(VoiceIMEApp(isSetupComplete: isSetupComplete));
+  runApp(HashtypeApp(isSetupComplete: isSetupComplete));
 }
 
-class VoiceIMEApp extends StatelessWidget {
+class HashtypeApp extends StatelessWidget {
   final bool isSetupComplete;
   
-  const VoiceIMEApp({super.key, required this.isSetupComplete});
+  const HashtypeApp({super.key, required this.isSetupComplete});
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,7 @@ class VoiceIMEApp extends StatelessWidget {
       listenable: themeManager,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Voice IME',
+          title: 'hashtype',
           debugShowCheckedModeBanner: false,
           themeMode: themeManager.themeMode,
           theme: ThemeData(

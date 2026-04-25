@@ -12,6 +12,35 @@
 
 ---
 
+## 🚀 安装与使用
+
+1. **下载与安装：**
+   - 从 [Releases](https://github.com/blakejjia/speech-to-text-board-android/releases) 页面下载最新的 APK 文件并安装到你的 Android 设备上。
+2. **配置服务商：**
+   - 从桌面启动 **Hashtype** 应用。
+   - 进入 **STT 设置**，输入你的接口地址（Endpoint）和 API Key（例如 OpenAI Whisper）。
+   - 进入 **LLM 设置**，开启“AI Cleaning”，并设置你的系统提示词（可选但建议开启）。
+3. **启用键盘：**
+   - 进入 Android 设置 > 语言和输入法 > 屏幕键盘 > 管理键盘。
+   - 开启 **Hashtype**。
+4. **开始使用：**
+   - 在任何应用中，将输入法切换为 **Hashtype**。
+   - 点击麦克风图标开始录音，说话，完成后再次点击即可转录并插入文字。
+
+---
+
+## 📸 应用截图
+
+| 键盘界面 | 应用设置 | STT 配置 |
+| :---: | :---: | :---: |
+| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) |
+
+| LLM 配置 | 输入结果 |
+| :---: | :---: |
+| ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) |
+
+---
+
 ## 🌟 核心特性
 
 - **完全开源：** 代码透明，完全免费。你可以使用自己的后端，也可以连接你喜爱的服务商。
@@ -25,14 +54,6 @@
 
 ---
 
-## 📸 应用截图
-
-|             键盘界面             |                   应用设置                   |                       STT 配置                       |                             LLM 配置                              |                 输入结果                 |
-| :------------------------------------: | :------------------------------------------: | :----------------------------------------------------: | :-----------------------------------------------------------------: | :------------------------------------------: |
-| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) | ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) |
-
----
-
 ## 🛠️ 工作原理
 
 1. **录音：** 点击麦克风开始说话，键盘会录制高质量音频。
@@ -43,40 +64,10 @@
 
 ---
 
-## 🚀 快速入门
-
-### 前置条件
-
-- 运行 Android 8.0 (API 26) 或更高版本的安卓设备。
-- （仅开发者）Flutter SDK 和 Android Studio。
-
-### 安装与设置
-
-1. **克隆仓库：**
-   ```bash
-   git clone https://github.com/blakejjia/speech-to-text-board-android.git
-   ```
-2. **构建应用：**
-   ```bash
-   cd apps/flutter_app
-   flutter pub get
-   flutter run --release
-   ```
-3. **配置服务商：**
-   - 从桌面启动 **Hashtype** 应用。
-   - 进入 **STT 设置**，输入你的接口地址（Endpoint）和 API Key。
-   - 进入 **LLM 设置**，开启“AI Cleaning”，并设置你的系统提示词。
-4. **启用键盘：**
-   - 进入 Android 设置 > 语言和输入法 > 屏幕键盘 > 管理键盘。
-   - 开启 **Hashtype**。
-   - 在需要语音输入时切换到 Hashtype 即可！
-
----
-
 ## 🏗️ 项目架构
 
 - **`apps/flutter_app`**: 主配置应用，负责设置管理和交互桥接。
-- **`apps/flutter_app/android`**: 包含原生 Kotlin `InputMethodService` 实现，负责高性能音频录制和输入法集成。
+- **`apps/flutter_app/android`**: 包含原生 Kotlin `InputMethodService`实现，负责高性能音频录制和输入法集成。
 - **`services/`**: 负责 API 通信和提供商管理的共享逻辑。
 
 ---
@@ -87,7 +78,7 @@
 
 ## 📄 开源协议
 
-本项目采用 [GPL v3 开源协议](LICENSE)。
+本项目采用 [GPL v3 开源协议](LICENSE).
 
 ---
 
