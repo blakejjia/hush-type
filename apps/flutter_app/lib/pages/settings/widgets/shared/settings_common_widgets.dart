@@ -8,8 +8,6 @@ class MainProviderTile extends StatelessWidget {
   final bool isSelected;
   final bool isActive;
   final bool enabled;
-  final String groupValue;
-  final ValueChanged<String> onChanged;
 
   const MainProviderTile({
     super.key,
@@ -19,8 +17,6 @@ class MainProviderTile extends StatelessWidget {
     required this.icon,
     required this.isSelected,
     required this.isActive,
-    required this.groupValue,
-    required this.onChanged,
     this.enabled = true,
   });
 
@@ -39,7 +35,6 @@ class MainProviderTile extends StatelessWidget {
       ),
       child: ListTile(
         enabled: enabled,
-        onTap: enabled ? () => onChanged(id) : null,
         leading: Icon(icon, color: isSelected ? colorScheme.primary : null),
         title: Row(
           children: [
@@ -60,8 +55,7 @@ class MainProviderTile extends StatelessWidget {
         subtitle: Text(subtitle),
         trailing: Radio<String>(
           value: id,
-          groupValue: groupValue,
-          onChanged: enabled ? (v) => onChanged(v!) : null,
+          toggleable: false,
         ),
       ),
     );

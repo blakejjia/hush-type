@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../services/stt_settings_service.dart';
 import '../../../services/model_provider_utils.dart';
+import '../../../models/api_model.dart';
 import 'shared/settings_common_widgets.dart';
 
 class STTEngineSelectionList extends StatefulWidget {
@@ -14,32 +15,33 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
   final STTSettingsService _settingsService = STTSettingsService();
   String _selectedProvider = 'cloud_providers';
   String _selectedCloudProvider = 'OpenAI';
-  String _selectedModel = 'Whisper Large v3';
+  String _selectedModel = 'whisper-1';
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _endpointController = TextEditingController();
   
   bool _modelsLoaded = false;
   bool _isLoadingModels = false;
   bool _isApiKeyVerified = false;
+  List<ApiModel> _availableModels = [];
 
   void _fetchModels() async {
     if (!ModelProviderUtils.isValidApiKey(_selectedCloudProvider, _apiKeyController.text)) return;
     
-    _settingsService.setApiKey(_apiKeyController.text);
+    await _settingsService.setApiKey(_apiKeyController.text);
     setState(() {
       _isLoadingModels = true;
       _modelsLoaded = false;
       _isApiKeyVerified = false;
     });
     
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    final models = await _settingsService.fetchAvailableModels();
     
     if (mounted) {
       setState(() {
         _isLoadingModels = false;
-        _modelsLoaded = true;
-        _isApiKeyVerified = true;
+        _availableModels = models;
+        _modelsLoaded = models.isNotEmpty;
+        _isApiKeyVerified = models.isNotEmpty;
       });
     }
   }
@@ -84,31 +86,33 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        MainProviderTile(
-          id: 'cloud',
-          title: 'Cloud',
-          subtitle: 'Reliable accuracy. No setup needed.',
-          icon: Icons.cloud_outlined,
-          isSelected: _selectedProvider == 'cloud',
-          isActive: _selectedProvider == 'cloud',
+        RadioGroup<String>(
           groupValue: _selectedProvider,
           onChanged: (id) {
+            if (id == null) return;
             setState(() => _selectedProvider = id);
             _settingsService.setProvider(id);
           },
-        ),
-        MainProviderTile(
-          id: 'cloud_providers',
-          title: 'Bring Your Own Key',
-          subtitle: 'Use your own API key with supported providers.',
-          icon: Icons.key_outlined,
-          isSelected: _selectedProvider == 'cloud_providers',
-          isActive: _selectedProvider == 'cloud_providers',
-          groupValue: _selectedProvider,
-          onChanged: (id) {
-            setState(() => _selectedProvider = id);
-            _settingsService.setProvider(id);
-          },
+          child: Column(
+            children: [
+              MainProviderTile(
+                id: 'cloud',
+                title: 'Cloud',
+                subtitle: 'Reliable accuracy. No setup needed.',
+                icon: Icons.cloud_outlined,
+                isSelected: _selectedProvider == 'cloud',
+                isActive: _selectedProvider == 'cloud',
+              ),
+              MainProviderTile(
+                id: 'cloud_providers',
+                title: 'Bring Your Own Key',
+                subtitle: 'Use your own API key with supported providers.',
+                icon: Icons.key_outlined,
+                isSelected: _selectedProvider == 'cloud_providers',
+                isActive: _selectedProvider == 'cloud_providers',
+              ),
+            ],
+          ),
         ),
         if (_selectedProvider == 'cloud_providers') 
           ProviderConfigView(
@@ -146,10 +150,34 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
             modelsList: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Model', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Available Models', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    ElevatedButton(
+                      onPressed: _isLoadingModels ? null : _fetchModels, 
+                      child: const Text('Refresh')
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
-                _buildModelTile('whisper-1', 'High accuracy speech recognition', _selectedModel == 'whisper-1'),
-                _buildModelTile('whisper-large-v3', 'Open source version', _selectedModel == 'whisper-large-v3'),
+                if (_availableModels.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: Text('No Whisper models found.', style: TextStyle(color: Colors.red))),
+                  )
+                else
+                  RadioGroup<String>(
+                    groupValue: _selectedModel,
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() => _selectedModel = v);
+                      _settingsService.setModel(v);
+                    },
+                    child: Column(
+                      children: _availableModels.map((m) => _buildModelTile(m.id, 'Owner: ${m.ownedBy}', _selectedModel == m.id)).toList(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -162,6 +190,7 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
     final isSelected = _selectedModel == name;
 
     return Card(
+      key: ValueKey(name),
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -175,11 +204,6 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
         dense: true,
         leading: Radio<String>(
           value: name,
-          groupValue: _selectedModel,
-          onChanged: (v) {
-            setState(() => _selectedModel = v!);
-            _settingsService.setModel(v!);
-          },
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(desc),

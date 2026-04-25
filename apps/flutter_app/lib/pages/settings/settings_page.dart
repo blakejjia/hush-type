@@ -1,13 +1,37 @@
 import 'package:flutter/material.dart';
 import '../../services/app_settings_service.dart';
+import '../../services/llm_settings_service.dart';
 import '../../main.dart';
 import 'language_selection_page.dart';
 import 'language_model_settings_page.dart';
 import 'speech_to_text_settings_page.dart';
 import 'theme_color_page.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  final LLMSettingsService _llmSettingsService = LLMSettingsService();
+  bool _llmEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLLMSettings();
+  }
+
+  Future<void> _loadLLMSettings() async {
+    final enabled = await _llmSettingsService.isEnabled();
+    if (mounted) {
+      setState(() {
+        _llmEnabled = enabled;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +52,8 @@ class SettingsPage extends StatelessWidget {
                 icon: Icons.palette_outlined,
                 title: 'Theme Color',
                 subtitle: 'Customize the keyboard accent color',
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const ThemeColorPage()),
                   );
@@ -55,70 +79,79 @@ class SettingsPage extends StatelessWidget {
                   },
                 ),
               ),
-          const SizedBox(height: 24),
-          _buildSectionHeader(context, 'Voice & Language'),
-          _buildSettingTile(
-            context,
-            icon: Icons.language_outlined,
-            title: 'Input Language',
-            subtitle: 'English, Chinese...',
-            onTap: () {
-              Navigator.push(
+              const SizedBox(height: 24),
+              _buildSectionHeader(context, 'Voice & Language'),
+              _buildSettingTile(
                 context,
-                MaterialPageRoute(builder: (context) => const LanguageSelectionPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeader(context, 'AI Models'),
-          _buildSettingTile(
-            context,
-            icon: Icons.mic_rounded,
-            title: 'Speech-to-Text',
-            subtitle: 'Pick an engine for dictation and recording',
-            onTap: () {
-              Navigator.push(
+                icon: Icons.language_outlined,
+                title: 'Input Language',
+                subtitle: 'English, Chinese...',
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LanguageSelectionPage()),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildSectionHeader(context, 'AI Models'),
+              _buildSettingTile(
                 context,
-                MaterialPageRoute(builder: (context) => const SpeechToTextSettingsPage()),
-              );
-            },
-          ),
-          _buildSettingTile(
-            context,
-            icon: Icons.psychology_rounded,
-            title: 'Language Models',
-            subtitle: 'Configure cleanup and formatting models',
-            onTap: () {
-              Navigator.push(
+                icon: Icons.mic_rounded,
+                title: 'Speech-to-Text',
+                subtitle: 'Pick an engine for dictation and recording',
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SpeechToTextSettingsPage()),
+                  );
+                },
+              ),
+              _buildSettingTile(
                 context,
-                MaterialPageRoute(builder: (context) => const LanguageModelSettingsPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeader(context, 'System'),
-          _buildSettingTile(
-            context,
-            icon: Icons.info_outline,
-            title: 'About',
-            subtitle: 'Version 1.0.0',
-            onTap: () {},
-          ),
-          _buildSettingTile(
-            context,
-            icon: Icons.restart_alt,
-            title: 'Reset Setup',
-            subtitle: 'Show welcome screen again on next launch',
-            onTap: () async {
-              final appSettings = AppSettingsService();
-              await appSettings.resetSetup();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Setup reset! App will show welcome page on next launch.')),
-                );
-              }
-            },
-          ),
+                icon: Icons.psychology_rounded,
+                title: 'Language Models',
+                subtitle: 'Configure cleanup and formatting models',
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LanguageModelSettingsPage()),
+                  );
+                  // Refresh status when coming back
+                  _loadLLMSettings();
+                },
+                trailing: Switch(
+                  value: _llmEnabled,
+                  onChanged: (v) {
+                    setState(() => _llmEnabled = v);
+                    _llmSettingsService.setEnabled(v);
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildSectionHeader(context, 'System'),
+              _buildSettingTile(
+                context,
+                icon: Icons.info_outline,
+                title: 'About',
+                subtitle: 'Version 1.0.0',
+                onTap: () {},
+              ),
+              _buildSettingTile(
+                context,
+                icon: Icons.restart_alt,
+                title: 'Reset Setup',
+                subtitle: 'Show welcome screen again on next launch',
+                onTap: () async {
+                  final appSettings = AppSettingsService();
+                  await appSettings.resetSetup();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Setup reset! App will show welcome page on next launch.')),
+                    );
+                  }
+                },
+              ),
             ],
           );
         },

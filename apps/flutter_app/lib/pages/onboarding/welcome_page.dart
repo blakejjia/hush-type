@@ -88,7 +88,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primaryContainer.withOpacity(0.4),
+              colorScheme.primaryContainer.withValues(alpha: 0.4),
               colorScheme.surface,
             ],
           ),
@@ -169,7 +169,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDone ? colorScheme.primaryContainer.withOpacity(0.3) : colorScheme.surface,
+        color: isDone ? colorScheme.primaryContainer.withValues(alpha: 0.3) : colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isDone ? colorScheme.primary : colorScheme.outlineVariant,
@@ -178,7 +178,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
         boxShadow: [
           if (isDone)
             BoxShadow(
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),

@@ -37,7 +37,7 @@ class ThemeManager extends ChangeNotifier {
     _primaryColor = color;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_colorKey, color.value);
+    await prefs.setInt(_colorKey, color.toARGB32());
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

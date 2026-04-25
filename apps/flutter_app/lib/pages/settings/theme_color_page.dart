@@ -33,7 +33,7 @@ class ThemeColorPage extends StatelessWidget {
         itemCount: _colors.length,
         itemBuilder: (context, index) {
           final color = _colors[index];
-          final isSelected = themeManager.primaryColor.value == color.value;
+          final isSelected = themeManager.primaryColor.toARGB32() == color.toARGB32();
 
           return GestureDetector(
             onTap: () {
@@ -50,7 +50,7 @@ class ThemeColorPage extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.3),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),

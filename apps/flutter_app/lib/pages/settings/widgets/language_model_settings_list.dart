@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../services/llm_settings_service.dart';
 import '../../../services/model_provider_utils.dart';
+import '../../../models/api_model.dart';
 import 'shared/settings_common_widgets.dart';
 
 class LanguageModelSettingsList extends StatefulWidget {
@@ -20,6 +21,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
   bool _modelsLoaded = false;
   bool _isLoadingModels = false;
   bool _isApiKeyVerified = false;
+  List<ApiModel> _availableModels = [];
   
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _endpointController = TextEditingController();
@@ -55,23 +57,28 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
   }
 
   void _fetchModels() async {
-    if (!ModelProviderUtils.isValidApiKey(_selectedCloudProvider, _apiKeyController.text)) return;
+    if (!ModelProviderUtils.isValidApiKey(
+      _selectedCloudProvider,
+      _apiKeyController.text,
+    )) {
+      return;
+    }
 
-    _settingsService.setApiKey(_apiKeyController.text);
+    await _settingsService.setApiKey(_apiKeyController.text);
     setState(() {
       _isLoadingModels = true;
       _modelsLoaded = false;
       _isApiKeyVerified = false;
     });
     
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    final models = await _settingsService.fetchAvailableModels();
     
     if (mounted) {
       setState(() {
         _isLoadingModels = false;
-        _modelsLoaded = true;
-        _isApiKeyVerified = true;
+        _availableModels = models;
+        _modelsLoaded = models.isNotEmpty;
+        _isApiKeyVerified = models.isNotEmpty;
       });
     }
   }
@@ -100,33 +107,35 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
           ),
         ),
         const SizedBox(height: 24),
-        MainProviderTile(
-          id: 'cloud',
-          title: 'Cloud',
-          subtitle: 'Reliable accuracy. No setup needed.',
-          icon: Icons.cloud_outlined,
-          isSelected: _selectedProvider == 'cloud',
-          isActive: _selectedProvider == 'cloud',
+        RadioGroup<String>(
           groupValue: _selectedProvider,
-          enabled: _enableCleanup,
           onChanged: (id) {
+            if (!_enableCleanup || id == null) return;
             setState(() => _selectedProvider = id);
             _settingsService.setProvider(id);
           },
-        ),
-        MainProviderTile(
-          id: 'cloud_providers',
-          title: 'Bring Your Own Key',
-          subtitle: 'Use your own API key with supported providers.',
-          icon: Icons.key_outlined,
-          isSelected: _selectedProvider == 'cloud_providers',
-          isActive: _selectedProvider == 'cloud_providers',
-          groupValue: _selectedProvider,
-          enabled: _enableCleanup,
-          onChanged: (id) {
-            setState(() => _selectedProvider = id);
-            _settingsService.setProvider(id);
-          },
+          child: Column(
+            children: [
+              MainProviderTile(
+                id: 'cloud',
+                title: 'Cloud',
+                subtitle: 'Reliable accuracy. No setup needed.',
+                icon: Icons.cloud_outlined,
+                isSelected: _selectedProvider == 'cloud',
+                isActive: _selectedProvider == 'cloud',
+                enabled: _enableCleanup,
+              ),
+              MainProviderTile(
+                id: 'cloud_providers',
+                title: 'Bring Your Own Key',
+                subtitle: 'Use your own API key with supported providers.',
+                icon: Icons.key_outlined,
+                isSelected: _selectedProvider == 'cloud_providers',
+                isActive: _selectedProvider == 'cloud_providers',
+                enabled: _enableCleanup,
+              ),
+            ],
+          ),
         ),
         
         if (_selectedProvider == 'cloud_providers') 
@@ -180,18 +189,32 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
                           child: const Text('Reset')
                         ),
                         const SizedBox(width: 8),
-                        ElevatedButton(onPressed: _fetchModels, child: const Text('Refresh')),
+                        ElevatedButton(
+                          onPressed: _isLoadingModels ? null : _fetchModels, 
+                          child: const Text('Refresh')
+                        ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                _buildModelItem('MiniMax-M2.5', 'minimax'),
-                _buildModelItem('Qwen3-30B-A3B', 'custom'),
-                _buildModelItem('deepseek-ai/deepseek-v3.2', 'custom'),
-                _buildModelItem('deepseek-chat', 'deepseek'),
-                _buildModelItem('deepseek-reasoner', 'deepseek'),
-                _buildModelItem('gemini-flash-latest', 'vertex-ai'),
+                if (_availableModels.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: Text('No models found for this key/endpoint.', style: TextStyle(color: Colors.red))),
+                  )
+                else
+                  RadioGroup<String>(
+                    groupValue: _selectedModel,
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() => _selectedModel = v);
+                      _settingsService.setModel(v);
+                    },
+                    child: Column(
+                      children: _availableModels.map((m) => _buildModelItem(m.id, m.ownedBy)).toList(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -204,6 +227,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
     final isSelected = _selectedModel == name;
 
     return Card(
+      key: ValueKey(name),
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -217,15 +241,10 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
         dense: true,
         leading: Radio<String>(
           value: name,
-          groupValue: _selectedModel,
-          onChanged: (v) {
-            setState(() => _selectedModel = v!);
-            _settingsService.setModel(v!);
-          },
         ),
         title: Row(
           children: [
-            Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
             const SizedBox(width: 8),
             Text('Owner: $owner', style: const TextStyle(fontSize: 11, color: Colors.grey)),
           ],
