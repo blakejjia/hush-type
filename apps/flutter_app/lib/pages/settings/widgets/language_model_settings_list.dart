@@ -26,6 +26,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
   
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _endpointController = TextEditingController();
+  final TextEditingController _promptController = TextEditingController();
   final FocusNode _apiKeyFocusNode = FocusNode();
 
   @override
@@ -65,6 +66,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
     final apiKey = await _settingsService.getApiKey(provider: cloudProvider);
     final endpoint = await _settingsService.getEndpoint(provider: cloudProvider);
     final model = await _settingsService.getModel(provider: cloudProvider);
+    final prompt = await _settingsService.getSystemPrompt();
 
     if (mounted) {
       setState(() {
@@ -73,6 +75,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
         _selectedCloudProvider = cloudProvider;
         _apiKeyController.text = apiKey;
         _endpointController.text = endpoint;
+        _promptController.text = prompt;
         _selectedModel = model;
         
       });
@@ -133,6 +136,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
   void dispose() {
     _apiKeyController.dispose();
     _endpointController.dispose();
+    _promptController.dispose();
     _apiKeyFocusNode.dispose();
     super.dispose();
   }
@@ -153,6 +157,44 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
             },
           ),
         ),
+        if (_enableCleanup) ...[
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('System Prompt', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  _promptController.text = LLMSettingsService.defaultSystemPrompt;
+                  _settingsService.setSystemPrompt(LLMSettingsService.defaultSystemPrompt);
+                },
+                child: const Text('Reset', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _promptController,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter system prompt',
+                ),
+                onChanged: (val) {
+                  _settingsService.setSystemPrompt(val);
+                },
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         RadioGroup<String>(
           groupValue: _selectedProvider,

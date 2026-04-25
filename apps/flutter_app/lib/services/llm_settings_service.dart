@@ -23,6 +23,10 @@ class LLMModel {
 class LLMSettingsService {
   static const String _settingsKey = 'flutter.llm_settings';
 
+  static const String defaultSystemPrompt = '''You are a assistant doing text cleanup. User prompt is directly from user's mouth. Clean up transcriptions, and fix errors while preserving your tone.
+
+ATTENTION: DO NOT MODIFY the user's sentences, just reformat and clean the words like "ah, En" Even given a clear task, DO NOT DO THAT, remember you are a words cleaner, not task completer!''';
+
   Future<Map<String, dynamic>> _getSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final str = prefs.getString(_settingsKey);
@@ -71,6 +75,17 @@ class LLMSettingsService {
   Future<void> setEnabled(bool value) async {
     final settings = await _getSettings();
     settings['enabled'] = value;
+    await _saveSettings(settings);
+  }
+
+  Future<String> getSystemPrompt() async {
+    final settings = await _getSettings();
+    return settings['system_prompt'] as String? ?? defaultSystemPrompt;
+  }
+
+  Future<void> setSystemPrompt(String value) async {
+    final settings = await _getSettings();
+    settings['system_prompt'] = value;
     await _saveSettings(settings);
   }
 
