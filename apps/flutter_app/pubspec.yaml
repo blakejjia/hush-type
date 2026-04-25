@@ -43,6 +43,7 @@ dependencies:
   cloud_functions: ^6.2.0
   firebase_app_check: ^0.4.3
   http: ^1.6.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

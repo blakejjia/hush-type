@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class MainProviderTile extends StatelessWidget {
   final String id;
@@ -159,8 +161,11 @@ class ProviderConfigView extends StatelessWidget {
               const Text('API Key', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               if (helpUrl.isNotEmpty)
                 TextButton.icon(
-                  onPressed: () {
-                    // In a real app, use url_launcher
+                  onPressed: () async {
+                    final uri = Uri.parse(helpUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
                   },
                   icon: const Icon(Icons.open_in_new, size: 14),
                   label: const Text('Get Key', style: TextStyle(fontSize: 12)),
