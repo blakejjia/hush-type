@@ -67,6 +67,7 @@ class ProviderConfigView extends StatelessWidget {
   final List<String> providers;
   final TextEditingController apiKeyController;
   final TextEditingController endpointController;
+  final FocusNode apiKeyFocusNode;
   final bool isLoadingModels;
   final bool isApiKeyVerified;
   final bool isBasicValid;
@@ -80,6 +81,7 @@ class ProviderConfigView extends StatelessWidget {
   final ValueChanged<String> onProviderSelected;
   final ValueChanged<String> onApiKeyChanged;
   final ValueChanged<String> onEndpointChanged;
+  final VoidCallback onClearApiKey;
 
   const ProviderConfigView({
     super.key,
@@ -87,6 +89,7 @@ class ProviderConfigView extends StatelessWidget {
     required this.providers,
     required this.apiKeyController,
     required this.endpointController,
+    required this.apiKeyFocusNode,
     required this.isLoadingModels,
     required this.isApiKeyVerified,
     required this.isBasicValid,
@@ -98,6 +101,7 @@ class ProviderConfigView extends StatelessWidget {
     required this.onProviderSelected,
     required this.onApiKeyChanged,
     required this.onEndpointChanged,
+    required this.onClearApiKey,
     this.errorText,
     this.enabled = true,
   });
@@ -165,24 +169,48 @@ class ProviderConfigView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: apiKeyController,
-            enabled: enabled,
-            obscureText: true,
-            onChanged: onApiKeyChanged,
-            decoration: InputDecoration(
-              hintText: apiKeyPlaceholder,
-              prefixIcon: const Icon(Icons.key, size: 18),
-              errorText: errorText,
-              suffixIcon: isLoadingModels
-                  ? const Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    )
-                  : (isApiKeyVerified ? const Icon(Icons.check_circle, color: Colors.green, size: 18) : null),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
+          ListenableBuilder(
+            listenable: Listenable.merge([apiKeyController, apiKeyFocusNode]),
+            builder: (context, _) {
+              final showClearButton = apiKeyFocusNode.hasFocus && apiKeyController.text.isNotEmpty;
+
+              return TextField(
+                controller: apiKeyController,
+                focusNode: apiKeyFocusNode,
+                enabled: enabled,
+                obscureText: true,
+                onChanged: onApiKeyChanged,
+                decoration: InputDecoration(
+                  hintText: apiKeyPlaceholder,
+                  prefixIcon: const Icon(Icons.key, size: 18),
+                  errorText: errorText,
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (showClearButton)
+                        IconButton(
+                          tooltip: 'Clear API key',
+                          onPressed: enabled ? onClearApiKey : null,
+                          icon: const Icon(Icons.clear, size: 18),
+                        ),
+                      if (isLoadingModels)
+                        const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      else if (isApiKeyVerified)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 12.0),
+                          child: Icon(Icons.check_circle, color: Colors.green, size: 18),
+                        ),
+                    ],
+                  ),
+                  suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
           if (modelsLoaded)

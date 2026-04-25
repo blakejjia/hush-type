@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,81 +33,150 @@ class STTSettingsService {
     await prefs.setString(_cloudProviderKey, value);
   }
 
-  Future<String> getModel() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_modelKey) ?? 'whisper-1';
+  String _scopedKey(String baseKey, String provider) {
+    final normalizedProvider = provider.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    return '${baseKey}_$normalizedProvider';
   }
 
-  Future<void> setModel(String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_modelKey, value);
+  Future<String> _resolveProvider(String? provider) async {
+    return provider ?? await getCloudProvider();
   }
 
-  Future<String> getApiKey() async {
+  Future<String> getModel({String? provider}) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_apiKeyKey) ?? '';
+    final resolvedProvider = await _resolveProvider(provider);
+    return prefs.getString(_scopedKey(_modelKey, resolvedProvider)) ??
+        prefs.getString(_modelKey) ??
+        'whisper-1';
   }
 
-  Future<void> setApiKey(String value) async {
+  Future<void> setModel(String value, {String? provider}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_apiKeyKey, value);
+    final resolvedProvider = await _resolveProvider(provider);
+    await prefs.setString(_scopedKey(_modelKey, resolvedProvider), value);
   }
 
-  Future<String> getEndpoint() async {
+  Future<String> getApiKey({String? provider}) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_endpointKey) ?? '';
+    final resolvedProvider = await _resolveProvider(provider);
+    return prefs.getString(_scopedKey(_apiKeyKey, resolvedProvider)) ??
+        prefs.getString(_apiKeyKey) ??
+        '';
   }
 
-  Future<void> setEndpoint(String value) async {
+  Future<void> setApiKey(String value, {String? provider}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_endpointKey, value);
+    final resolvedProvider = await _resolveProvider(provider);
+    await prefs.setString(_scopedKey(_apiKeyKey, resolvedProvider), value);
   }
 
-  Future<List<ApiModel>> fetchAvailableModels() async {
-    final cloudProvider = await getCloudProvider();
-    final apiKey = await getApiKey();
-    final customEndpoint = await getEndpoint();
+  Future<String> getEndpoint({String? provider}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final resolvedProvider = await _resolveProvider(provider);
+    return prefs.getString(_scopedKey(_endpointKey, resolvedProvider)) ??
+        prefs.getString(_endpointKey) ??
+        '';
+  }
 
-    String baseUrl = ModelProviderUtils.getEndpointForProvider(cloudProvider, isSTT: true);
-    if (cloudProvider == 'Custom' && customEndpoint.isNotEmpty) {
-      baseUrl = customEndpoint;
-    }
+  Future<void> setEndpoint(String value, {String? provider}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final resolvedProvider = await _resolveProvider(provider);
+    await prefs.setString(_scopedKey(_endpointKey, resolvedProvider), value);
+  }
 
-    if (baseUrl.isEmpty || apiKey.isEmpty) {
-      return [];
+  Future<ModelFetchResult> fetchAvailableModels({
+    String? cloudProvider,
+    String? apiKey,
+    String? customEndpoint,
+  }) async {
+    final resolvedProvider = cloudProvider ?? await getCloudProvider();
+    final resolvedApiKey = (apiKey ?? await getApiKey()).trim();
+    final resolvedCustomEndpoint = (customEndpoint ?? await getEndpoint()).trim();
+
+    if (resolvedApiKey.isEmpty) {
+      return const ModelFetchResult.failure('Enter an API key.');
     }
 
     try {
-      String rootBaseUrl = baseUrl;
-      if (baseUrl.contains('/audio/transcriptions')) {
-        rootBaseUrl = baseUrl.replaceAll('/audio/transcriptions', '');
-      } else if (baseUrl.contains('/transcriptions')) {
-        rootBaseUrl = baseUrl.replaceAll('/transcriptions', '');
+      String baseUrl = ModelProviderUtils.getEndpointForProvider(
+        resolvedProvider,
+        isSTT: true,
+      );
+      if (resolvedProvider == 'Custom' && resolvedCustomEndpoint.isNotEmpty) {
+        baseUrl = resolvedCustomEndpoint;
       }
 
-      String modelsEndpoint = rootBaseUrl.endsWith('/') ? '${rootBaseUrl}models' : '$rootBaseUrl/models';
-      
-      final url = Uri.parse(modelsEndpoint);
+      if (baseUrl.isEmpty) {
+        return ModelFetchResult.failure('No endpoint configured for $resolvedProvider.');
+      }
+
       final response = await http.get(
-        url,
+        Uri.parse(ModelProviderUtils.buildModelsEndpoint(baseUrl)),
         headers: {
-          'Authorization': 'Bearer $apiKey',
+          'Authorization': 'Bearer $resolvedApiKey',
           'Content-Type': 'application/json',
         },
       ).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['data'] is List) {
-          final List<dynamic> modelsJson = data['data'];
-          final allModels = modelsJson.map((m) => ApiModel.fromJson(m)).toList();
-          return allModels.where((m) => m.id.toLowerCase().contains('whisper')).toList();
-        }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return ModelFetchResult.failure(_extractErrorMessage(response));
       }
-      return [];
+
+      final data = _decodeJson(response.body);
+      if (data == null) {
+        return const ModelFetchResult.failure('The provider returned invalid JSON for the models list.');
+      }
+
+      final modelsJson = data['data'];
+      if (modelsJson is! List) {
+        return const ModelFetchResult.success([]);
+      }
+
+      final allModels = modelsJson
+          .whereType<Map<String, dynamic>>()
+          .map(ApiModel.fromJson)
+          .toList();
+      final sttModels = allModels.where(_isSpeechToTextModel).toList();
+
+      return ModelFetchResult.success(sttModels);
+    } on TimeoutException {
+      return const ModelFetchResult.failure('Timed out while fetching models from the provider.');
     } catch (e) {
       debugPrint('Error fetching STT models: $e');
-      return [];
+      return ModelFetchResult.failure('Failed to fetch models: $e');
     }
+  }
+
+  bool _isSpeechToTextModel(ApiModel model) {
+    final id = model.id.toLowerCase();
+    return id.contains('whisper') ||
+        id.contains('transcribe') ||
+        id.contains('distil-whisper') ||
+        id.contains('speech-to-text');
+  }
+
+  Map<String, dynamic>? _decodeJson(String body) {
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> ? decoded : null;
+  }
+
+  String _extractErrorMessage(http.Response response) {
+    final data = _decodeJson(response.body);
+    if (data != null) {
+      final nestedError = data['error'];
+      if (nestedError is Map<String, dynamic>) {
+        final message = nestedError['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+    }
+
+    return 'Model lookup failed with status ${response.statusCode}.';
   }
 }

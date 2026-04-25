@@ -21,10 +21,12 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
   bool _modelsLoaded = false;
   bool _isLoadingModels = false;
   bool _isApiKeyVerified = false;
+  String? _errorText;
   List<ApiModel> _availableModels = [];
   
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _endpointController = TextEditingController();
+  final FocusNode _apiKeyFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -32,13 +34,37 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
     _loadSettings();
   }
 
+  Future<void> _loadProviderSettings(String provider) async {
+    final apiKey = await _settingsService.getApiKey(provider: provider);
+    final endpoint = await _settingsService.getEndpoint(provider: provider);
+    final model = await _settingsService.getModel(provider: provider);
+
+    if (!mounted) return;
+
+    setState(() {
+      _selectedCloudProvider = provider;
+      _apiKeyController.text = apiKey;
+      _endpointController.text = endpoint;
+      _selectedModel = model;
+      _availableModels = [];
+      _modelsLoaded = false;
+      _isLoadingModels = false;
+      _isApiKeyVerified = false;
+      _errorText = ModelProviderUtils.getApiKeyValidationError(provider, apiKey);
+    });
+
+    if (ModelProviderUtils.isValidApiKey(provider, apiKey)) {
+      _fetchModels();
+    }
+  }
+
   Future<void> _loadSettings() async {
     final enabled = await _settingsService.isEnabled();
     final provider = await _settingsService.getProvider();
     final cloudProvider = await _settingsService.getCloudProvider();
-    final apiKey = await _settingsService.getApiKey();
-    final endpoint = await _settingsService.getEndpoint();
-    final model = await _settingsService.getModel();
+    final apiKey = await _settingsService.getApiKey(provider: cloudProvider);
+    final endpoint = await _settingsService.getEndpoint(provider: cloudProvider);
+    final model = await _settingsService.getModel(provider: cloudProvider);
 
     if (mounted) {
       setState(() {
@@ -49,36 +75,56 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
         _endpointController.text = endpoint;
         _selectedModel = model;
         
-        if (ModelProviderUtils.isValidApiKey(cloudProvider, apiKey)) {
-          _fetchModels();
-        }
       });
+    }
+
+    if (ModelProviderUtils.isValidApiKey(cloudProvider, apiKey)) {
+      _fetchModels();
     }
   }
 
   void _fetchModels() async {
-    if (!ModelProviderUtils.isValidApiKey(
+    final apiKey = _apiKeyController.text.trim();
+    final endpoint = _endpointController.text.trim();
+    final validationError = ModelProviderUtils.getApiKeyValidationError(
       _selectedCloudProvider,
-      _apiKeyController.text,
-    )) {
+      apiKey,
+    );
+
+    if (validationError != null) {
+      setState(() {
+        _availableModels = [];
+        _errorText = validationError;
+        _modelsLoaded = false;
+        _isLoadingModels = false;
+        _isApiKeyVerified = false;
+      });
       return;
     }
 
-    await _settingsService.setApiKey(_apiKeyController.text);
+    await _settingsService.setCloudProvider(_selectedCloudProvider);
+    await _settingsService.setApiKey(apiKey, provider: _selectedCloudProvider);
+    await _settingsService.setEndpoint(endpoint, provider: _selectedCloudProvider);
     setState(() {
       _isLoadingModels = true;
       _modelsLoaded = false;
       _isApiKeyVerified = false;
+      _errorText = null;
     });
     
-    final models = await _settingsService.fetchAvailableModels();
+    final result = await _settingsService.fetchAvailableModels(
+      cloudProvider: _selectedCloudProvider,
+      apiKey: apiKey,
+      customEndpoint: endpoint,
+    );
     
     if (mounted) {
       setState(() {
         _isLoadingModels = false;
-        _availableModels = models;
-        _modelsLoaded = models.isNotEmpty;
-        _isApiKeyVerified = models.isNotEmpty;
+        _availableModels = result.models;
+        _modelsLoaded = result.isSuccess;
+        _isApiKeyVerified = result.isSuccess;
+        _errorText = result.errorMessage;
       });
     }
   }
@@ -87,6 +133,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
   void dispose() {
     _apiKeyController.dispose();
     _endpointController.dispose();
+    _apiKeyFocusNode.dispose();
     super.dispose();
   }
 
@@ -144,34 +191,58 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
             providers: const ['OpenAI', 'Anthropic', 'Google Gemini', 'Groq', 'Custom'],
             apiKeyController: _apiKeyController,
             endpointController: _endpointController,
+            apiKeyFocusNode: _apiKeyFocusNode,
             isLoadingModels: _isLoadingModels,
             isApiKeyVerified: _isApiKeyVerified,
             isBasicValid: ModelProviderUtils.isValidApiKey(_selectedCloudProvider, _apiKeyController.text),
             modelsLoaded: _modelsLoaded,
+            errorText: _errorText,
             helpUrl: ModelProviderUtils.getApiKeyHelpUrl(_selectedCloudProvider),
             apiKeyPlaceholder: ModelProviderUtils.getApiKeyPlaceholder(_selectedCloudProvider),
             defaultEndpoint: ModelProviderUtils.getEndpointForProvider(_selectedCloudProvider),
             enabled: _enableCleanup,
-            onProviderSelected: (p) {
-              setState(() {
-                _selectedCloudProvider = p;
-                _modelsLoaded = false;
-                _isApiKeyVerified = false;
-              });
-              _settingsService.setCloudProvider(p);
-              if (ModelProviderUtils.isValidApiKey(p, _apiKeyController.text)) {
-                _fetchModels();
-              }
+            onProviderSelected: (p) async {
+              await _settingsService.setCloudProvider(p);
+              await _loadProviderSettings(p);
             },
-            onApiKeyChanged: (val) {
+            onApiKeyChanged: (val) async {
+              await _settingsService.setApiKey(val, provider: _selectedCloudProvider);
               setState(() {
+                _availableModels = [];
                 _isApiKeyVerified = false;
+                _modelsLoaded = false;
+                _errorText = ModelProviderUtils.getApiKeyValidationError(_selectedCloudProvider, val);
               });
               if (ModelProviderUtils.isValidApiKey(_selectedCloudProvider, val)) {
                 _fetchModels();
               }
             },
-            onEndpointChanged: (val) => _settingsService.setEndpoint(val),
+            onEndpointChanged: (val) async {
+              await _settingsService.setEndpoint(val, provider: _selectedCloudProvider);
+              setState(() {
+                _availableModels = [];
+                _modelsLoaded = false;
+                _isApiKeyVerified = false;
+                _errorText = null;
+              });
+              if (_selectedCloudProvider == 'Custom' &&
+                  ModelProviderUtils.isValidApiKey(_selectedCloudProvider, _apiKeyController.text) &&
+                  val.trim().isNotEmpty) {
+                _fetchModels();
+              }
+            },
+            onClearApiKey: () async {
+              _apiKeyController.clear();
+              await _settingsService.setApiKey('', provider: _selectedCloudProvider);
+              if (!mounted) return;
+              setState(() {
+                _availableModels = [];
+                _modelsLoaded = false;
+                _isLoadingModels = false;
+                _isApiKeyVerified = false;
+                _errorText = null;
+              });
+            },
             modelsList: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -184,7 +255,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
                         TextButton(
                           onPressed: () {
                             setState(() => _selectedModel = '');
-                            _settingsService.setModel('');
+                            _settingsService.setModel('', provider: _selectedCloudProvider);
                           }, 
                           child: const Text('Reset')
                         ),
@@ -201,7 +272,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
                 if (_availableModels.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: Text('No models found for this key/endpoint.', style: TextStyle(color: Colors.red))),
+                    child: Center(child: Text('No models found from this endpoint.', style: TextStyle(color: Colors.red))),
                   )
                 else
                   RadioGroup<String>(
@@ -209,7 +280,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
                     onChanged: (v) {
                       if (v == null) return;
                       setState(() => _selectedModel = v);
-                      _settingsService.setModel(v);
+                      _settingsService.setModel(v, provider: _selectedCloudProvider);
                     },
                     child: Column(
                       children: _availableModels.map((m) => _buildModelItem(m.id, m.ownedBy)).toList(),
@@ -236,7 +307,7 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
       child: ListTile(
         onTap: () {
           setState(() => _selectedModel = name);
-          _settingsService.setModel(name);
+          _settingsService.setModel(name, provider: _selectedCloudProvider);
         },
         dense: true,
         leading: Radio<String>(

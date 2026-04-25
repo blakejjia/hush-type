@@ -16,3 +16,4 @@ firebase.json
 *.iml
 
 .agents
+.codex

@@ -11,3 +11,21 @@ class ApiModel {
     );
   }
 }
+
+class ModelFetchResult {
+  final List<ApiModel> models;
+  final String? errorMessage;
+
+  const ModelFetchResult({
+    required this.models,
+    this.errorMessage,
+  });
+
+  bool get isSuccess => errorMessage == null;
+
+  const ModelFetchResult.success(this.models)
+      : errorMessage = null;
+
+  const ModelFetchResult.failure(this.errorMessage)
+      : models = const [];
+}

@@ -1,19 +1,52 @@
 class ModelProviderUtils {
+  static const String anthropicVersion = '2023-06-01';
+
   static bool isValidApiKey(String provider, String key) {
-    if (key.isEmpty) return false;
+    return getApiKeyValidationError(provider, key) == null;
+  }
+
+  static String? getApiKeyValidationError(String provider, String key) {
+    final trimmedKey = key.trim();
+    if (trimmedKey.isEmpty) {
+      return null;
+    }
+
     switch (provider) {
       case 'OpenAI':
-        return RegExp(r'^sk-[a-zA-Z0-9]{32,}$').hasMatch(key);
+        if (!RegExp(r'^sk-[A-Za-z0-9_-]{20,}$').hasMatch(trimmedKey)) {
+          return 'OpenAI keys should look like sk-...';
+        }
+        return null;
       case 'Anthropic':
-        return RegExp(r'^sk-ant-[a-zA-Z0-9-]{32,}$').hasMatch(key);
+        if (!RegExp(r'^sk-ant-[A-Za-z0-9_-]{20,}$').hasMatch(trimmedKey)) {
+          return 'Anthropic keys should look like sk-ant-...';
+        }
+        return null;
       case 'Google Gemini':
-        return RegExp(r'^AIza[a-zA-Z0-9_-]{35}$').hasMatch(key);
+        if (!RegExp(r'^AIza[0-9A-Za-z_-]{20,}$').hasMatch(trimmedKey)) {
+          return 'Gemini keys should look like AIza...';
+        }
+        return null;
       case 'Groq':
-        return RegExp(r'^gsk_[a-zA-Z0-9]{32,}$').hasMatch(key);
+        if (!RegExp(r'^gsk_[A-Za-z0-9_-]{20,}$').hasMatch(trimmedKey)) {
+          return 'Groq keys should look like gsk_...';
+        }
+        return null;
       case 'Mistral':
-        return RegExp(r'^[a-zA-Z0-9]{32,}$').hasMatch(key);
+        if (!RegExp(r'^[A-Za-z0-9_-]{20,}$').hasMatch(trimmedKey)) {
+          return 'Mistral keys should be a long token from the console.';
+        }
+        return null;
+      case 'Custom':
+        if (trimmedKey.length < 6) {
+          return 'Enter a longer API key.';
+        }
+        return null;
       default:
-        return key.length > 5;
+        if (trimmedKey.length < 6) {
+          return 'Enter a longer API key.';
+        }
+        return null;
     }
   }
 
@@ -56,5 +89,30 @@ class ModelProviderUtils {
         default: return '';
       }
     }
+  }
+
+  static String buildModelsEndpoint(String rawEndpoint) {
+    final endpoint = rawEndpoint.trim();
+    if (endpoint.isEmpty) {
+      return '';
+    }
+
+    final normalized = endpoint.endsWith('/')
+        ? endpoint.substring(0, endpoint.length - 1)
+        : endpoint;
+
+    if (normalized.endsWith('/models')) {
+      return normalized;
+    }
+
+    if (normalized.endsWith('/audio/transcriptions')) {
+      return '${normalized.substring(0, normalized.length - '/audio/transcriptions'.length)}/models';
+    }
+
+    if (normalized.endsWith('/transcriptions')) {
+      return '${normalized.substring(0, normalized.length - '/transcriptions'.length)}/models';
+    }
+
+    return '$normalized/models';
   }
 }

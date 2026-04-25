@@ -120,12 +120,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   // Refresh status when coming back
                   _loadLLMSettings();
                 },
-                trailing: Switch(
-                  value: _llmEnabled,
-                  onChanged: (v) {
-                    setState(() => _llmEnabled = v);
-                    _llmSettingsService.setEnabled(v);
-                  },
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _llmEnabled ? 'On' : 'Off',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 20),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
