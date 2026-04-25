@@ -21,6 +21,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _llmEnabled = true;
   String _llmSubtitle = 'Loading...';
   String _sttSubtitle = 'Loading...';
+  String _languageSubtitle = 'Loading...';
   bool _llmNeedsConfig = false;
   bool _sttNeedsConfig = false;
 
@@ -31,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSettings() async {
+    final appSettings = AppSettingsService();
     // LLM Settings
     final llmEnabled = await _llmSettingsService.isEnabled();
     String llmSub = '';
@@ -79,6 +81,9 @@ class _SettingsPageState extends State<SettingsPage> {
       sttSub = 'Cloud';
     }
 
+    // Language Settings
+    final languageSub = await appSettings.getSelectedLanguageNames();
+
     if (mounted) {
       setState(() {
         _llmEnabled = llmEnabled;
@@ -86,6 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _llmNeedsConfig = llmNeedsConf;
         _sttSubtitle = sttSub;
         _sttNeedsConfig = sttNeedsConf;
+        _languageSubtitle = languageSub;
       });
     }
   }
@@ -149,7 +155,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 context,
                 icon: Icons.language_outlined,
                 title: 'Input Language',
-                subtitle: 'English, Chinese...',
+                subtitle: _languageSubtitle,
                 onTap: () async {
                   await Navigator.push(
                     context,
@@ -157,6 +163,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       builder: (context) => const LanguageSelectionPage(),
                     ),
                   );
+                  _loadSettings();
                 },
               ),
               const SizedBox(height: 24),

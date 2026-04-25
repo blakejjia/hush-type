@@ -10,18 +10,7 @@ class LanguageSelectionPage extends StatefulWidget {
 
 class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
   final AppSettingsService _settingsService = AppSettingsService();
-  final List<Map<String, String>> _languages = [
-    {'name': 'English (US)', 'code': 'en_US'},
-    {'name': 'Chinese (Simplified)', 'code': 'zh_CN'},
-    {'name': 'Chinese (Traditional)', 'code': 'zh_TW'},
-    {'name': 'Spanish', 'code': 'es_ES'},
-    {'name': 'French', 'code': 'fr_FR'},
-    {'name': 'German', 'code': 'de_DE'},
-    {'name': 'Japanese', 'code': 'ja_JP'},
-    {'name': 'Korean', 'code': 'ko_KR'},
-    {'name': 'Russian', 'code': 'ru_RU'},
-    {'name': 'Portuguese', 'code': 'pt_PT'},
-  ];
+  final List<Map<String, String>> _languages = AppSettingsService.availableLanguages;
 
   Set<String> _selectedLanguages = {'en_US'};
 
