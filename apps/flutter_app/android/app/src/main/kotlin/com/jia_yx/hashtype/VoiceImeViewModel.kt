@@ -26,6 +26,8 @@ class VoiceImeViewModel(private val context: Context) {
         fun onStateChanged(state: ImeState)
         fun onStatusMessageChanged(message: String)
         fun onTextCommitted(text: String)
+        fun onBackspace()
+        fun onEnter()
         fun onOpenSettings()
     }
 
@@ -88,6 +90,14 @@ class VoiceImeViewModel(private val context: Context) {
         } else {
             startRecording()
         }
+    }
+
+    fun handleBackspace() {
+        listener?.onBackspace()
+    }
+
+    fun handleEnter() {
+        listener?.onEnter()
     }
 
     private fun startRecording() {

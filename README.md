@@ -49,7 +49,8 @@ Unlike standard keyboards that lock you into a single provider, Hashtype allows 
   - **Large Language Models:** Support for OpenAI, Anthropic, and Google Gemini.
 - **AI Cleaning Pipeline:** Automatically send your STT transcript to an LLM to fix grammar, punctuation, and context errors before it's even typed.
 - **Customizable System Prompts:** Tailor exactly how the AI "cleans" your text. Want it to translate? Summarize? Formalize? Just change the system prompt.
-- **Privacy First:** No intermediate servers. The app communicates directly with your specified API endpoints.
+- **Minimal Permissions, Maximum Privacy:** Hashtype **does not require** any dangerous system accessibility permissions or extra system-level control. Unlike many other AI input tools that request accessibility access to function, Hashtype only needs microphone access to record your voice. This ensures your screen content, passwords, and sensitive data remain private and your device stays secure.
+- **Direct Communication:** No intermediate servers. The app communicates directly with your specified API endpoints.
 - **Material 3 Design:** A modern, clean keyboard interface that supports dynamic colors and looks great on Android.
 
 ---

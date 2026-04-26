@@ -20,6 +20,8 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
 
     private val tvStatus: MaterialTextView
     private val btnMic: MaterialButton
+    private val btnBackspace: MaterialButton
+    private val btnEnter: MaterialButton
     private val btnBack: ImageButton
     private val density = resources.displayMetrics.density
 
@@ -72,11 +74,34 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
         header.addView(tvStatus)
         header.addView(endSpacer)
 
-        // Mic Button Container (to center it vertically in remaining space)
-        val micContainer = LinearLayout(getContext()).apply {
-            orientation = VERTICAL
+        // Horizontal container for Backspace, Mic, and Enter
+        val controlRow = LinearLayout(getContext()).apply {
+            orientation = HORIZONTAL
             gravity = Gravity.CENTER
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
+            setPadding((16 * density).toInt(), 0, (16 * density).toInt(), 0)
+        }
+
+        val secondaryBtnSize = (56 * density).toInt()
+        val controlBtnColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurfaceVariant, Color.parseColor("#49454F"))
+        val onControlBtnColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.parseColor("#E6E1E5"))
+
+        btnBackspace = MaterialButton(getContext()).apply {
+            icon = androidx.core.content.ContextCompat.getDrawable(context, android.R.drawable.ic_input_delete)
+            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+            iconPadding = 0
+            iconTint = ColorStateList.valueOf(onControlBtnColor)
+            setPadding(0, 0, 0, 0)
+            layoutParams = LayoutParams(secondaryBtnSize, secondaryBtnSize).apply {
+                marginEnd = (24 * density).toInt()
+            }
+            shapeAppearanceModel = shapeAppearanceModel.toBuilder()
+                .setAllCorners(CornerFamily.ROUNDED, secondaryBtnSize / 2f)
+                .build()
+            backgroundTintList = ColorStateList.valueOf(controlBtnColor)
+            elevation = 0f
+            insetTop = 0
+            insetBottom = 0
         }
 
         btnMic = MaterialButton(getContext()).apply {
@@ -103,10 +128,30 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             elevation = 0f // Flat look for keyboard
         }
 
-        micContainer.addView(btnMic)
+        btnEnter = MaterialButton(getContext()).apply {
+            icon = androidx.core.content.ContextCompat.getDrawable(context, android.R.drawable.ic_menu_send)
+            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+            iconPadding = 0
+            iconTint = ColorStateList.valueOf(onControlBtnColor)
+            setPadding(0, 0, 0, 0)
+            layoutParams = LayoutParams(secondaryBtnSize, secondaryBtnSize).apply {
+                marginStart = (24 * density).toInt()
+            }
+            shapeAppearanceModel = shapeAppearanceModel.toBuilder()
+                .setAllCorners(CornerFamily.ROUNDED, secondaryBtnSize / 2f)
+                .build()
+            backgroundTintList = ColorStateList.valueOf(controlBtnColor)
+            elevation = 0f
+            insetTop = 0
+            insetBottom = 0
+        }
+
+        controlRow.addView(btnBackspace)
+        controlRow.addView(btnMic)
+        controlRow.addView(btnEnter)
 
         addView(header)
-        addView(micContainer)
+        addView(controlRow)
         
         // Add bottom padding
         setPadding(0, 0, 0, (16 * density).toInt())
@@ -118,6 +163,14 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
 
     fun setOnBackClickListener(listener: OnClickListener) {
         btnBack.setOnClickListener(listener)
+    }
+
+    fun setOnBackspaceClickListener(listener: OnClickListener) {
+        btnBackspace.setOnClickListener(listener)
+    }
+
+    fun setOnEnterClickListener(listener: OnClickListener) {
+        btnEnter.setOnClickListener(listener)
     }
 
     fun updateStatus(message: String) {
