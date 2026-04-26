@@ -100,7 +100,7 @@ class VoiceImeViewModel(private val context: Context) {
         listener?.onEnter()
     }
 
-    private fun startRecording() {
+    fun startRecording() {
         try {
             recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(context)
@@ -128,7 +128,7 @@ class VoiceImeViewModel(private val context: Context) {
         }
     }
 
-    private fun stopRecordingAndTranscribe() {
+    fun stopRecordingAndTranscribe() {
         try {
             recorder?.apply {
                 stop()
@@ -183,6 +183,20 @@ class VoiceImeViewModel(private val context: Context) {
                 finishWithError(message)
             }
         )
+    }
+
+    fun cancelRecording() {
+        try {
+            recorder?.apply {
+                stop()
+                release()
+            }
+        } catch (_: RuntimeException) {
+        } finally {
+            recorder = null
+        }
+        updateState(ImeState.Idle)
+        listener?.onStatusMessageChanged("Ready to record")
     }
 
     private fun transcribeAudio(

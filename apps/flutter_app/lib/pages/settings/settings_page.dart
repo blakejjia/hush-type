@@ -186,25 +186,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   );
                 },
               ),
-              _buildSettingTile(
-                context,
-                icon: Icons.restart_alt,
-                title: 'Reset Setup',
-                subtitle: 'Show welcome screen again on next launch',
-                onTap: () async {
-                  final appSettings = AppSettingsService();
-                  await appSettings.resetSetup();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Setup reset! App will show welcome page on next launch.',
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
             ],
           );
         },

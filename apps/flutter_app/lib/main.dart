@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -7,6 +6,8 @@ import 'firebase_options.dart';
 import 'pages/onboarding/welcome_page.dart';
 import 'pages/main/main_screen.dart';
 import 'services/theme_manager.dart';
+
+import 'services/setup_service.dart';
 
 final themeManager = ThemeManager();
 
@@ -19,19 +20,58 @@ void main() async {
   
   await FirebaseAppCheck.instance.activate();
 
-  final prefs = await SharedPreferences.getInstance();
-  final bool isSetupComplete = prefs.getBool('isSetupComplete') ?? false;
-  
-  runApp(HashtypeApp(isSetupComplete: isSetupComplete));
+  runApp(const HashtypeApp());
 }
 
-class HashtypeApp extends StatelessWidget {
-  final bool isSetupComplete;
-  
-  const HashtypeApp({super.key, required this.isSetupComplete});
+class HashtypeApp extends StatefulWidget {
+  const HashtypeApp({super.key});
+
+  @override
+  State<HashtypeApp> createState() => _HashtypeAppState();
+}
+
+class _HashtypeAppState extends State<HashtypeApp> with WidgetsBindingObserver {
+  bool? _isSetupComplete;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkSetup();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSetup();
+    }
+  }
+
+  Future<void> _checkSetup() async {
+    final complete = await SetupService.isSetupComplete();
+    if (mounted && _isSetupComplete != complete) {
+      setState(() {
+        _isSetupComplete = complete;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isSetupComplete == null) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return ListenableBuilder(
       listenable: themeManager,
       builder: (context, _) {
@@ -69,7 +109,7 @@ class HashtypeApp extends StatelessWidget {
               ),
             ),
           ),
-          home: isSetupComplete ? const MainScreen() : const WelcomePage(),
+          home: _isSetupComplete! ? const MainScreen() : const WelcomePage(),
         );
       }
     );
