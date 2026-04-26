@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import com.google.android.material.color.MaterialColors
-import android.view.ContextThemeWrapper
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
@@ -33,8 +33,6 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
         gravity = Gravity.CENTER_HORIZONTAL
         
         val keyboardHeight = (280 * density).toInt()
-        // Note: LayoutParams for the view itself are managed by the parent (SoftInputWindow)
-        // But we set them here for consistency if used in other contexts.
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, keyboardHeight)
         minimumHeight = keyboardHeight
 
@@ -52,8 +50,10 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             contentDescription = "Switch back to previous keyboard"
             val iconColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.parseColor("#E6E1E5"))
             imageTintList = ColorStateList.valueOf(iconColor)
-            // Padding to make it easier to hit
             setPadding((12 * density).toInt(), (12 * density).toInt(), (12 * density).toInt(), (12 * density).toInt())
+            setOnClickListener {
+                vibrate()
+            }
         }
 
         tvStatus = MaterialTextView(getContext()).apply {
@@ -65,7 +65,6 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
         }
         
-        // Spacer for symmetry if needed, or just let text expand
         val endSpacer = View(getContext()).apply {
             layoutParams = LayoutParams((48 * density).toInt(), (48 * density).toInt())
         }
@@ -74,31 +73,34 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
         header.addView(tvStatus)
         header.addView(endSpacer)
 
-        // Horizontal container for Backspace, Mic, and Enter
+        // Horizontal container for Mic and Right controls
         val controlRow = LinearLayout(getContext()).apply {
             orientation = HORIZONTAL
-            gravity = Gravity.CENTER
+            gravity = Gravity.CENTER_VERTICAL
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
             setPadding((16 * density).toInt(), 0, (16 * density).toInt(), 0)
         }
 
+        val leftSpacer = View(getContext()).apply {
+            layoutParams = LayoutParams(0, 0, 1f)
+        }
+
         val secondaryBtnSize = (56 * density).toInt()
-        val controlBtnColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurfaceVariant, Color.parseColor("#49454F"))
         val onControlBtnColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.parseColor("#E6E1E5"))
 
-        btnBackspace = MaterialButton(getContext()).apply {
-            icon = androidx.core.content.ContextCompat.getDrawable(context, android.R.drawable.ic_input_delete)
+        btnBackspace = MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_backspace_m3)
             iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
             iconPadding = 0
             iconTint = ColorStateList.valueOf(onControlBtnColor)
             setPadding(0, 0, 0, 0)
             layoutParams = LayoutParams(secondaryBtnSize, secondaryBtnSize).apply {
-                marginEnd = (24 * density).toInt()
+                bottomMargin = (12 * density).toInt()
             }
             shapeAppearanceModel = shapeAppearanceModel.toBuilder()
                 .setAllCorners(CornerFamily.ROUNDED, secondaryBtnSize / 2f)
                 .build()
-            backgroundTintList = ColorStateList.valueOf(controlBtnColor)
+            strokeColor = ColorStateList.valueOf(onControlBtnColor)
             elevation = 0f
             insetTop = 0
             insetBottom = 0
@@ -114,7 +116,6 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             val btnSize = (96 * density).toInt()
             layoutParams = LayoutParams(btnSize, btnSize)
             
-            // Make it circular
             shapeAppearanceModel = shapeAppearanceModel.toBuilder()
                 .setAllCorners(CornerFamily.ROUNDED, btnSize / 2f)
                 .build()
@@ -122,55 +123,75 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             insetTop = 0
             insetBottom = 0
             
-            // Set initial color (Material 3 Primary)
             val primaryColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary, Color.parseColor("#D0BCFF"))
             backgroundTintList = ColorStateList.valueOf(primaryColor)
-            elevation = 0f // Flat look for keyboard
+            elevation = 0f
         }
 
-        btnEnter = MaterialButton(getContext()).apply {
-            icon = androidx.core.content.ContextCompat.getDrawable(context, android.R.drawable.ic_menu_send)
+        btnEnter = MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_keyboard_return_m3)
             iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
             iconPadding = 0
             iconTint = ColorStateList.valueOf(onControlBtnColor)
             setPadding(0, 0, 0, 0)
-            layoutParams = LayoutParams(secondaryBtnSize, secondaryBtnSize).apply {
-                marginStart = (24 * density).toInt()
-            }
+            layoutParams = LayoutParams(secondaryBtnSize, secondaryBtnSize)
             shapeAppearanceModel = shapeAppearanceModel.toBuilder()
                 .setAllCorners(CornerFamily.ROUNDED, secondaryBtnSize / 2f)
                 .build()
-            backgroundTintList = ColorStateList.valueOf(controlBtnColor)
+            strokeColor = ColorStateList.valueOf(onControlBtnColor)
             elevation = 0f
             insetTop = 0
             insetBottom = 0
         }
 
-        controlRow.addView(btnBackspace)
+        val rightControls = LinearLayout(getContext()).apply {
+            orientation = VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+            addView(btnBackspace)
+            addView(btnEnter)
+        }
+
+        controlRow.addView(leftSpacer)
         controlRow.addView(btnMic)
-        controlRow.addView(btnEnter)
+        controlRow.addView(rightControls)
 
         addView(header)
         addView(controlRow)
         
-        // Add bottom padding
         setPadding(0, 0, 0, (16 * density).toInt())
     }
 
+    private fun vibrate() {
+        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
     fun setOnMicClickListener(listener: OnClickListener) {
-        btnMic.setOnClickListener(listener)
+        btnMic.setOnClickListener {
+            vibrate()
+            listener.onClick(it)
+        }
     }
 
     fun setOnBackClickListener(listener: OnClickListener) {
-        btnBack.setOnClickListener(listener)
+        btnBack.setOnClickListener {
+            vibrate()
+            listener.onClick(it)
+        }
     }
 
     fun setOnBackspaceClickListener(listener: OnClickListener) {
-        btnBackspace.setOnClickListener(listener)
+        btnBackspace.setOnClickListener {
+            vibrate()
+            listener.onClick(it)
+        }
     }
 
     fun setOnEnterClickListener(listener: OnClickListener) {
-        btnEnter.setOnClickListener(listener)
+        btnEnter.setOnClickListener {
+            vibrate()
+            listener.onClick(it)
+        }
     }
 
     fun updateStatus(message: String) {
@@ -185,7 +206,7 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
                     is VoiceImeViewModel.ImeState.Processing -> 
                         MaterialColors.getColor(this, com.google.android.material.R.attr.colorTertiary, Color.parseColor("#FFD166"))
                     is VoiceImeViewModel.ImeState.Success -> 
-                        Color.parseColor("#B4E197") // Keep success green or use a primary container
+                        Color.parseColor("#B4E197")
                     is VoiceImeViewModel.ImeState.Error -> 
                         MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.parseColor("#938F99"))
                     else -> 
