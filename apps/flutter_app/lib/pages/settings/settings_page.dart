@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../services/app_settings_service.dart';
-import '../../services/llm_settings_service.dart';
+import '../../services/setup_service.dart';
 import '../../services/stt_settings_service.dart';
+import '../../services/llm_settings_service.dart';
 import '../../main.dart';
 import 'language_selection_page.dart';
 import 'language_model_settings_page.dart';
 import 'speech_to_text_settings_page.dart';
 import 'theme_color_page.dart';
 import 'about_page.dart';
-
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -49,6 +49,9 @@ class _SettingsPageState extends State<SettingsPage> {
         _languageSubtitle = languageSub;
       });
     }
+
+    // Trigger global setup check to ensure we react to any invalid configuration
+    await SetupService().checkStatus();
   }
 
   @override

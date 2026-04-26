@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../main/main_screen.dart';
+import '../../services/setup_service.dart';
+import '../../services/stt_settings_service.dart';
+import '../../services/llm_settings_service.dart';
+import '../settings/speech_to_text_settings_page.dart';
+import '../settings/language_model_settings_page.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -16,24 +19,33 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
   
   bool _hasMicPermission = false;
   bool _isIMEEnabled = false;
+  bool _sttReady = false;
+  String _sttSubtitle = 'Mandatory: Configure Speech-to-Text';
+  String _llmSubtitle = 'Optional: Language Model cleanup';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    SetupService().addListener(_onSetupChanged);
+    _checkStatus();
+  }
+
+  void _onSetupChanged() {
     _checkStatus();
   }
   
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SetupService().removeListener(_onSetupChanged);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkStatus();
+      SetupService().checkStatus();
     }
   }
 
@@ -46,17 +58,33 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
       debugPrint("Failed to check IME status: '${e.message}'.");
     }
 
-    setState(() {
-      _hasMicPermission = status.isGranted;
-      _isIMEEnabled = imeEnabled;
-    });
+    final sttService = STTSettingsService();
+    final sttSummary = await sttService.getSummary();
+    
+    final llmService = LLMSettingsService();
+    final llmSummary = await llmService.getSummary();
+
+    if (mounted) {
+      setState(() {
+        _hasMicPermission = status.isGranted;
+        _isIMEEnabled = imeEnabled;
+        _sttReady = !sttSummary.needsConfiguration;
+        _sttSubtitle = 'STT: ${sttSummary.subtitle}';
+        _llmSubtitle = 'LLM: ${llmSummary.subtitle} (Optional)';
+      });
+    }
+    
+    // Also trigger global check if it hasn't been triggered
+    if (mounted) {
+      // We don't call SetupService().checkStatus() here to avoid infinite loops 
+      // if checkStatus() calls notifyListeners() and we are listening.
+      // But checkStatus() only notifies if value changed.
+    }
   }
 
   Future<void> _requestMicPermission() async {
-    final status = await Permission.microphone.request();
-    setState(() {
-      _hasMicPermission = status.isGranted;
-    });
+    await Permission.microphone.request();
+    SetupService().checkStatus();
   }
 
   Future<void> _openIMESettings() async {
@@ -67,19 +95,68 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _openAISettings() async {
+    if (!mounted) return;
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'AI Configuration',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.mic_rounded),
+              title: const Text('Speech-to-Text'),
+              subtitle: Text(_sttSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SpeechToTextSettingsPage()),
+                );
+                _checkStatus();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.psychology_rounded),
+              title: const Text('Language Model'),
+              subtitle: Text(_llmSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LanguageModelSettingsPage()),
+                );
+                _checkStatus();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _completeSetup() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isSetupComplete', true);
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
-    }
+    await SetupService().checkStatus();
+    // main.dart will handle the navigation because it's listening to SetupService
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isReady = _hasMicPermission && _isIMEEnabled && _sttReady;
     
     return Scaffold(
       body: Container(
@@ -115,7 +192,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
                 _buildStepCard(
                   context,
                   index: 1,
@@ -124,7 +201,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
                   isDone: _hasMicPermission,
                   onTap: _requestMicPermission,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildStepCard(
                   context,
                   index: 2,
@@ -133,11 +210,20 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
                   isDone: _isIMEEnabled,
                   onTap: _openIMESettings,
                 ),
+                const SizedBox(height: 12),
+                _buildStepCard(
+                  context,
+                  index: 3,
+                  title: 'AI Configuration',
+                  subtitle: 'Configure STT (Mandatory) and LLM (Optional).',
+                  isDone: _sttReady,
+                  onTap: _openAISettings,
+                ),
                 const Spacer(),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.tonal(
-                    onPressed: (_hasMicPermission && _isIMEEnabled) ? _completeSetup : null,
+                    onPressed: isReady ? _completeSetup : null,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       shape: RoundedRectangleBorder(
@@ -167,7 +253,7 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
     
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDone ? colorScheme.primaryContainer.withValues(alpha: 0.3) : colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -184,49 +270,51 @@ class _WelcomePageState extends State<WelcomePage> with WidgetsBindingObserver {
             ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isDone ? colorScheme.primary : colorScheme.surfaceContainerHighest,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: isDone
-                  ? const Icon(Icons.check, color: Colors.white, size: 24)
-                  : Text(
-                      '$index',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: isDone ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: isDone
+                    ? const Icon(Icons.check, color: Colors.white, size: 20)
+                    : Text(
+                        '$index',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (!isDone)
-            IconButton.filledTonal(
-              onPressed: onTap,
-              icon: const Icon(Icons.arrow_forward_ios, size: 16),
-            ),
-        ],
+            if (!isDone)
+              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

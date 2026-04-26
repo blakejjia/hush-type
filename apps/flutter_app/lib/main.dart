@@ -37,29 +37,34 @@ class _HashtypeAppState extends State<HashtypeApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    SetupService().addListener(_onSetupChanged);
     _checkSetup();
+  }
+
+  void _onSetupChanged() {
+    if (mounted) {
+      setState(() {
+        _isSetupComplete = SetupService().isComplete;
+      });
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SetupService().removeListener(_onSetupChanged);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkSetup();
+      SetupService().checkStatus();
     }
   }
 
   Future<void> _checkSetup() async {
-    final complete = await SetupService.isSetupComplete();
-    if (mounted && _isSetupComplete != complete) {
-      setState(() {
-        _isSetupComplete = complete;
-      });
-    }
+    await SetupService().checkStatus();
   }
 
   @override
