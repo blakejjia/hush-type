@@ -12,6 +12,15 @@
 
 ---
 
+## 🧪 加入测试
+
+如果你想通过 Google Play Store 测试 Hashtype 的最新版本：
+
+1. **加入 Google 群组：** [hashtype](https://groups.google.com/g/hashtype)（无需申请，直接加入）。
+2. **参与测试：** 加入群组后，点击此链接加入 Play Store 的测试计划：[加入 Hashtype 测试](https://play.google.com/apps/testing/com.jia_yx.hashtype)。
+
+---
+
 ## 🚀 安装与使用
 
 1. **下载与安装：**

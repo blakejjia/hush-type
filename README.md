@@ -12,6 +12,15 @@ Unlike standard keyboards that lock you into a single provider, Hashtype allows 
 
 ---
 
+## 🧪 Join Testing
+
+If you'd like to help test the latest versions of Hashtype via the Google Play Store:
+
+1. **Join the Google Group:** [hashtype](https://groups.google.com/g/hashtype). (No restrictions to join).
+2. **Opt-in for Testing:** After joining the group, click this link to join the testing program on the Play Store: [Join Hashtype Testing](https://play.google.com/apps/testing/com.jia_yx.hashtype).
+
+---
+
 ## 🚀 Setup & Usage
 
 1. **Download & Install:**
