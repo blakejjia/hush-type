@@ -13,43 +13,35 @@ class SetupService extends ChangeNotifier {
   bool _isComplete = false;
   bool get isComplete => _isComplete;
 
+  bool _hasMicPermission = false;
+  bool get hasMicPermission => _hasMicPermission;
+
+  bool _isImeEnabled = false;
+  bool get isImeEnabled => _isImeEnabled;
+
+  bool _isSttConfigured = false;
+  bool get isSttConfigured => _isSttConfigured;
+
   Future<bool> checkStatus() async {
     // 1. Check Microphone Permission
     final micStatus = await Permission.microphone.status;
-    if (!micStatus.isGranted) {
-      _updateComplete(false);
-      return false;
-    }
+    _hasMicPermission = micStatus.isGranted;
 
     // 2. Check IME Enabled
-    bool isImeEnabled = false;
     try {
-      isImeEnabled = await platform.invokeMethod('isIMEEnabled');
+      _isImeEnabled = await platform.invokeMethod('isIMEEnabled');
     } catch (e) {
-      isImeEnabled = false;
-    }
-    if (!isImeEnabled) {
-      _updateComplete(false);
-      return false;
+      _isImeEnabled = false;
     }
 
     // 3. Check STT Configuration (Mandatory)
     final sttService = STTSettingsService();
     final sttSummary = await sttService.getSummary();
-    if (sttSummary.needsConfiguration) {
-      _updateComplete(false);
-      return false;
-    }
+    _isSttConfigured = !sttSummary.needsConfiguration;
     
-    _updateComplete(true);
-    return true;
-  }
-
-  void _updateComplete(bool value) {
-    if (_isComplete != value) {
-      _isComplete = value;
-      notifyListeners();
-    }
+    _isComplete = _hasMicPermission && _isImeEnabled && _isSttConfigured;
+    notifyListeners();
+    return _isComplete;
   }
 
   // Static helper for one-off checks

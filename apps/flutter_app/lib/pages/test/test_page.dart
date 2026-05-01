@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../../services/setup_service.dart';
+import '../settings/speech_to_text_settings_page.dart';
 
 class TestPage extends StatelessWidget {
   const TestPage({super.key});
+
+  static const platform = MethodChannel('com.jia_yx.hashtype/ime');
 
   @override
   Widget build(BuildContext context) {
@@ -9,67 +15,184 @@ class TestPage extends StatelessWidget {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Keyboard Test', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('hashtype', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    Icon(Icons.mic_none_rounded, size: 64, color: colorScheme.primary),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Try Your Voice Keyboard',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      body: ListenableBuilder(
+        listenable: SetupService(),
+        builder: (context, _) {
+          final setup = SetupService();
+          
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!setup.isComplete) ...[
+                  _buildStatusCard(context, setup),
+                  const SizedBox(height: 24),
+                ],
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      children: [
+                        Icon(Icons.mic_none_rounded, size: 64, color: colorScheme.primary),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Try Your Voice Keyboard',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap the input field below to activate the hashtype keyboard. Speak naturally to see the results.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap the input field below to activate the hashtype keyboard. Speak naturally to see the results.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  maxLines: 5,
+                  decoration: InputDecoration(
+                    hintText: 'Results will appear here...',
+                    labelText: 'Transcription Field',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
                     ),
-                  ],
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    ),
+                    prefixIcon: const Icon(Icons.text_fields),
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Tips: Ensure the keyboard is enabled in settings and you have granted microphone permissions.',
+                  style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(BuildContext context, SetupService setup) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.error.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Setup Incomplete',
+                style: TextStyle(
+                  color: colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-            TextField(
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: 'Results will appear here...',
-                labelText: 'Transcription Field',
-                alignLabelWithHint: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: colorScheme.outlineVariant),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: colorScheme.outlineVariant),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                ),
-                prefixIcon: const Icon(Icons.text_fields),
-                filled: true,
-                fillColor: colorScheme.surface,
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildStatusItem(
+            context,
+            'Microphone Permission',
+            setup.hasMicPermission,
+            onAction: () async {
+              await Permission.microphone.request();
+              setup.checkStatus();
+            },
+          ),
+          _buildStatusItem(
+            context,
+            'Keyboard Enabled',
+            setup.isImeEnabled,
+            onAction: () async {
+              try {
+                await platform.invokeMethod('openIMESettings');
+              } catch (_) {}
+              // We'll check again when app resumes, handled in main.dart
+            },
+          ),
+          _buildStatusItem(
+            context,
+            'AI Configuration',
+            setup.isSttConfigured,
+            onAction: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SpeechToTextSettingsPage()),
+              );
+              setup.checkStatus();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusItem(
+    BuildContext context,
+    String label,
+    bool isDone, {
+    required VoidCallback onAction,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            isDone ? Icons.check_circle_outline : Icons.error_outline,
+            size: 16,
+            color: isDone ? Colors.green : colorScheme.error,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDone ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Tips: Ensure the keyboard is enabled in settings and you have granted microphone permissions.',
-              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
-              textAlign: TextAlign.center,
+          ),
+          if (!isDone)
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: const Text('Fix', style: TextStyle(fontSize: 12)),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

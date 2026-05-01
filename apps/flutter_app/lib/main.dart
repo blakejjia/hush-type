@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
-import 'pages/onboarding/welcome_page.dart';
 import 'pages/main/main_screen.dart';
 import 'services/theme_manager.dart';
 
@@ -31,28 +30,17 @@ class HashtypeApp extends StatefulWidget {
 }
 
 class _HashtypeAppState extends State<HashtypeApp> with WidgetsBindingObserver {
-  bool? _isSetupComplete;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    SetupService().addListener(_onSetupChanged);
-    _checkSetup();
-  }
-
-  void _onSetupChanged() {
-    if (mounted) {
-      setState(() {
-        _isSetupComplete = SetupService().isComplete;
-      });
-    }
+    // Just trigger checkStatus once at start
+    SetupService().checkStatus();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    SetupService().removeListener(_onSetupChanged);
     super.dispose();
   }
 
@@ -63,19 +51,9 @@ class _HashtypeAppState extends State<HashtypeApp> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _checkSetup() async {
-    await SetupService().checkStatus();
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (_isSetupComplete == null) {
-      return const MaterialApp(
-        home: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
 
     return ListenableBuilder(
       listenable: themeManager,
@@ -114,7 +92,7 @@ class _HashtypeAppState extends State<HashtypeApp> with WidgetsBindingObserver {
               ),
             ),
           ),
-          home: _isSetupComplete! ? const MainScreen() : const WelcomePage(),
+          home: const MainScreen(),
         );
       }
     );
