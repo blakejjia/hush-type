@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppSettingsService {
   static const String _isSetupCompleteKey = 'isSetupComplete';
   static const String _selectedLanguagesKey = 'flutter.selected_languages';
+  static const String _showPeriodButtonKey = 'flutter.show_period_button';
 
   static const List<Map<String, String>> availableLanguages = [
     {'name': 'English (US)', 'code': 'en_US'},
@@ -30,6 +31,16 @@ class AppSettingsService {
   Future<void> setSelectedLanguages(List<String> codes) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_selectedLanguagesKey, codes);
+  }
+
+  Future<bool> getShowPeriodButton() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_showPeriodButtonKey) ?? true;
+  }
+
+  Future<void> setShowPeriodButton(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showPeriodButtonKey, value);
   }
 
   Future<String> getSelectedLanguageNames() async {

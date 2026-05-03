@@ -21,6 +21,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final STTSettingsService _sttSettingsService = STTSettingsService();
   final LLMSettingsService _llmSettingsService = LLMSettingsService();
   bool _llmEnabled = true;
+  bool _showPeriodButton = true;
   String _llmSubtitle = 'Loading...';
   String _sttSubtitle = 'Loading...';
   String _languageSubtitle = 'Loading...';
@@ -38,6 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final llmSummary = await _llmSettingsService.getSummary();
     final sttSummary = await _sttSettingsService.getSummary();
     final languageSub = await appSettings.getSelectedLanguageNames();
+    final showPeriod = await appSettings.getShowPeriodButton();
 
     if (mounted) {
       setState(() {
@@ -47,6 +49,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _sttSubtitle = sttSummary.subtitle;
         _sttNeedsConfig = sttSummary.needsConfiguration;
         _languageSubtitle = languageSub;
+        _showPeriodButton = showPeriod;
       });
     }
 
@@ -104,6 +107,23 @@ class _SettingsPageState extends State<SettingsPage> {
                     themeManager.setThemeMode(
                       v ? ThemeMode.dark : ThemeMode.light,
                     );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildSectionHeader(context, 'Keyboard'),
+              _buildSettingTile(
+                context,
+                icon: Icons.keyboard_outlined,
+                title: 'Show Period Button',
+                subtitle: 'Add a period (.) button to the keyboard',
+                trailing: Switch(
+                  value: _showPeriodButton,
+                  onChanged: (v) async {
+                    await AppSettingsService().setShowPeriodButton(v);
+                    setState(() {
+                      _showPeriodButton = v;
+                    });
                   },
                 ),
               ),
