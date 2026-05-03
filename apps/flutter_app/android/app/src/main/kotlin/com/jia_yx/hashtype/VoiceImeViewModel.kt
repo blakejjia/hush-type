@@ -231,30 +231,30 @@ class VoiceImeViewModel(private val context: Context) {
             .build()
             .withAuth(config)
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        executeWithRetry(
+            request = request,
+            onFailure = { e ->
                 Log.e("VoiceImeVM", "STT request failed", e)
                 onError("Speech-to-text request failed: ${e.message ?: "network error"}")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val body = it.body?.string().orEmpty()
-                    if (!it.isSuccessful) {
-                        onError(extractProviderError(body, it.code, "Speech-to-text request failed"))
-                        return
-                    }
-
-                    val transcript = parseTranscription(body)
-                    if (transcript.isNullOrBlank()) {
-                        onError("Speech-to-text response did not include transcript text.")
-                        return
-                    }
-
-                    onSuccess(transcript)
+            },
+            isSuccessful = { response, body ->
+                response.isSuccessful && !parseTranscription(body).isNullOrBlank()
+            },
+            onResponse = { response, body ->
+                if (!response.isSuccessful) {
+                    onError(extractProviderError(body, response.code, "Speech-to-text request failed"))
+                    return@executeWithRetry
                 }
+
+                val transcript = parseTranscription(body)
+                if (transcript.isNullOrBlank()) {
+                    onError("Speech-to-text response did not include transcript text.")
+                    return@executeWithRetry
+                }
+
+                onSuccess(transcript)
             }
-        })
+        )
     }
 
     private fun maybeRunLanguageModel(
@@ -299,23 +299,23 @@ class VoiceImeViewModel(private val context: Context) {
             .build()
             .withAuth(config)
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        executeWithRetry(
+            request = request,
+            onFailure = { e ->
                 onComplete(transcript, "Language model request failed: ${e.message ?: "network error"}")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val body = it.body?.string().orEmpty()
-                    if (!it.isSuccessful) {
-                        onComplete(transcript, extractProviderError(body, it.code, "Language model request failed"))
-                        return
-                    }
-                    val parsed = parseOpenAICompatibleMessage(body)
-                    onComplete(parsed ?: transcript, if (parsed == null) "Response missing text" else null)
+            },
+            isSuccessful = { response, body ->
+                response.isSuccessful && parseOpenAICompatibleMessage(body) != null
+            },
+            onResponse = { response, body ->
+                if (!response.isSuccessful) {
+                    onComplete(transcript, extractProviderError(body, response.code, "Language model request failed"))
+                    return@executeWithRetry
                 }
+                val parsed = parseOpenAICompatibleMessage(body)
+                onComplete(parsed ?: transcript, if (parsed == null) "Response missing text" else null)
             }
-        })
+        )
     }
 
     private fun runAnthropicCleanup(
@@ -344,23 +344,23 @@ class VoiceImeViewModel(private val context: Context) {
             .build()
             .withAuth(config)
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
+        executeWithRetry(
+            request = request,
+            onFailure = { e ->
                 onComplete(transcript, "Language model request failed: ${e.message ?: "network error"}")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    val body = it.body?.string().orEmpty()
-                    if (!it.isSuccessful) {
-                        onComplete(transcript, extractProviderError(body, it.code, "Language model request failed"))
-                        return
-                    }
-                    val parsed = parseAnthropicMessage(body)
-                    onComplete(parsed ?: transcript, if (parsed == null) "Response missing text" else null)
+            },
+            isSuccessful = { response, body ->
+                response.isSuccessful && parseAnthropicMessage(body) != null
+            },
+            onResponse = { response, body ->
+                if (!response.isSuccessful) {
+                    onComplete(transcript, extractProviderError(body, response.code, "Language model request failed"))
+                    return@executeWithRetry
                 }
+                val parsed = parseAnthropicMessage(body)
+                onComplete(parsed ?: transcript, if (parsed == null) "Response missing text" else null)
             }
-        })
+        )
     }
 
     private fun runGeminiCleanup(
@@ -387,20 +387,56 @@ class VoiceImeViewModel(private val context: Context) {
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
+        executeWithRetry(
+            request = request,
+            onFailure = { e ->
+                onComplete(transcript, "Language model request failed: ${e.message ?: "network error"}")
+            },
+            isSuccessful = { response, body ->
+                response.isSuccessful && parseGeminiMessage(body) != null
+            },
+            onResponse = { response, body ->
+                if (!response.isSuccessful) {
+                    onComplete(transcript, extractProviderError(body, response.code, "Language model request failed"))
+                    return@executeWithRetry
+                }
+                val parsed = parseGeminiMessage(body)
+                onComplete(parsed ?: transcript, if (parsed == null) "Response missing text" else null)
+            }
+        )
+    }
+
+    private fun executeWithRetry(
+        request: Request,
+        maxRetries: Int = 3,
+        currentRetry: Int = 0,
+        onFailure: (IOException) -> Unit,
+        onResponse: (Response, String) -> Unit,
+        isSuccessful: (Response, String) -> Boolean = { r, _ -> r.isSuccessful }
+    ) {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                onComplete(transcript, "Language model request failed: ${e.message ?: "network error"}")
+                if (currentRetry < maxRetries) {
+                    mainHandler.post { listener?.onStatusMessageChanged("Retrying... (${currentRetry + 1}/$maxRetries)") }
+                    mainHandler.postDelayed({
+                        executeWithRetry(request, maxRetries, currentRetry + 1, onFailure, onResponse, isSuccessful)
+                    }, 1000L)
+                } else {
+                    mainHandler.post { onFailure(e) }
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     val body = it.body?.string().orEmpty()
-                    if (!it.isSuccessful) {
-                        onComplete(transcript, extractProviderError(body, it.code, "Language model request failed"))
-                        return
+                    if (!isSuccessful(it, body) && currentRetry < maxRetries) {
+                        mainHandler.post { listener?.onStatusMessageChanged("Retrying... (${currentRetry + 1}/$maxRetries)") }
+                        mainHandler.postDelayed({
+                            executeWithRetry(request, maxRetries, currentRetry + 1, onFailure, onResponse, isSuccessful)
+                        }, 1000L)
+                    } else {
+                        mainHandler.post { onResponse(it, body) }
                     }
-                    val parsed = parseGeminiMessage(body)
-                    onComplete(parsed ?: transcript, if (parsed == null) "Response missing text" else null)
                 }
             }
         })
