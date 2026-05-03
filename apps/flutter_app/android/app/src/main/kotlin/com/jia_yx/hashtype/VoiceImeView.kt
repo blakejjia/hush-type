@@ -220,7 +220,7 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
         }
     }
 
-    fun updateKeyboardConfig(config: ImeSettingsResolver.KeyboardConfig) {
+    fun updateKeyboardConfig(config: KeyboardConfig) {
         btnPeriod.visibility = if (config.showPeriodButton) View.VISIBLE else View.GONE
     }
 
