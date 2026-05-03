@@ -31,6 +31,10 @@ data class LLMConfig(
     val authQueryParam: String,
 )
 
+data class KeyboardConfig(
+    val showPeriodButton: Boolean
+)
+
 private data class AuthConfig(
     val type: String,
     val header: String,
@@ -167,6 +171,12 @@ object ImeSettingsResolver {
             authPrefix = auth.prefix,
             authQueryParam = auth.queryParam,
         )
+    }
+
+    fun loadKeyboardConfig(context: Context): KeyboardConfig {
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val showPeriod = prefs.getBoolean("flutter.show_period_button", true)
+        return KeyboardConfig(showPeriodButton = showPeriod)
     }
 
     private fun parseJsonObject(raw: String?): JSONObject? {

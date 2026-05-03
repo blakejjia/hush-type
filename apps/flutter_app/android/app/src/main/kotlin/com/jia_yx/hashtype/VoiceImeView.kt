@@ -22,6 +22,7 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
     private val btnMic: MaterialButton
     private val btnBackspace: MaterialButton
     private val btnEnter: MaterialButton
+    private val btnPeriod: MaterialButton
     private val btnBack: ImageButton
     private val density = resources.displayMetrics.density
 
@@ -88,6 +89,23 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
         val secondaryBtnSize = (56 * density).toInt()
         val onControlBtnColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.parseColor("#E6E1E5"))
 
+        btnPeriod = MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = "."
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
+            setTextColor(onControlBtnColor)
+            setPadding(0, 0, 0, 0)
+            layoutParams = LayoutParams(secondaryBtnSize, secondaryBtnSize).apply {
+                bottomMargin = (12 * density).toInt()
+            }
+            shapeAppearanceModel = shapeAppearanceModel.toBuilder()
+                .setAllCorners(CornerFamily.ROUNDED, secondaryBtnSize / 2f)
+                .build()
+            strokeColor = ColorStateList.valueOf(onControlBtnColor)
+            elevation = 0f
+            insetTop = 0
+            insetBottom = 0
+        }
+
         btnBackspace = MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_backspace_m3)
             iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
@@ -148,6 +166,7 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             orientation = VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+            addView(btnPeriod)
             addView(btnBackspace)
             addView(btnEnter)
         }
@@ -192,6 +211,17 @@ class VoiceImeView(context: Context) : LinearLayout(context) {
             vibrate()
             listener.onClick(it)
         }
+    }
+
+    fun setOnPeriodClickListener(listener: OnClickListener) {
+        btnPeriod.setOnClickListener {
+            vibrate()
+            listener.onClick(it)
+        }
+    }
+
+    fun updateKeyboardConfig(config: ImeSettingsResolver.KeyboardConfig) {
+        btnPeriod.visibility = if (config.showPeriodButton) View.VISIBLE else View.GONE
     }
 
     fun updateStatus(message: String) {

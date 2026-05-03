@@ -29,6 +29,7 @@ class VoiceImeViewModel(private val context: Context) {
         fun onTextCommitted(text: String)
         fun onBackspace()
         fun onEnter()
+        fun onPeriod()
         fun onOpenSettings()
     }
 
@@ -99,6 +100,10 @@ class VoiceImeViewModel(private val context: Context) {
 
     fun handleEnter() {
         listener?.onEnter()
+    }
+
+    fun handlePeriod() {
+        listener?.onPeriod()
     }
 
     fun startRecording() {

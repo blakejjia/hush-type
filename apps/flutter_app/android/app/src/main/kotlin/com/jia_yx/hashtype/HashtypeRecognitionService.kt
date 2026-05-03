@@ -80,6 +80,10 @@ class HashtypeRecognitionService : RecognitionService(), VoiceImeViewModel.Liste
         // Not used for STT service
     }
 
+    override fun onPeriod() {
+        // Not used for STT service
+    }
+
     override fun onOpenSettings() {
         // Not used for STT service
     }

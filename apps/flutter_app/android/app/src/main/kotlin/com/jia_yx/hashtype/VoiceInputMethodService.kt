@@ -32,6 +32,9 @@ class VoiceInputMethodService : InputMethodService(), VoiceImeViewModel.Listener
         view.setOnEnterClickListener {
             viewModel.handleEnter()
         }
+        view.setOnPeriodClickListener {
+            viewModel.handlePeriod()
+        }
         imeView = view
         return view
     }
@@ -39,6 +42,8 @@ class VoiceInputMethodService : InputMethodService(), VoiceImeViewModel.Listener
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         viewModel.reset()
+        val keyboardConfig = ImeSettingsResolver.loadKeyboardConfig(this)
+        imeView?.updateKeyboardConfig(keyboardConfig)
     }
 
     override fun onComputeInsets(outInsets: Insets) {
@@ -82,6 +87,10 @@ class VoiceInputMethodService : InputMethodService(), VoiceImeViewModel.Listener
             ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
         }
+    }
+
+    override fun onPeriod() {
+        currentInputConnection?.commitText(".", 1)
     }
 
     override fun onOpenSettings() {
