@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -507,15 +508,15 @@ class VoiceImeViewModel(private val context: Context) {
 
     private fun finishWithSuccess(message: String) {
         mainHandler.post {
-            updateState(ImeState.Success(message))
-            mainHandler.postDelayed({ reset() }, 3000)
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            reset()
         }
     }
 
     private fun finishWithError(message: String) {
         mainHandler.post {
-            updateState(ImeState.Error(message))
-            mainHandler.postDelayed({ reset() }, 4500)
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            reset()
         }
     }
 
