@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/app_settings_service.dart';
 
 class PresetColor {
@@ -21,6 +22,7 @@ class FloatingMicCustomizePage extends StatefulWidget {
 }
 
 class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
+  static const _platform = MethodChannel('com.jia_yx.hashtype/ime');
   final AppSettingsService _settingsService = AppSettingsService();
 
   String _selectedColor = 'theme';
@@ -68,25 +70,78 @@ class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
     }
   }
 
-  Future<void> _updateColor(String value) async {
-    await _settingsService.setFloatingMicColor(value);
+  void _updateColor(String value) {
     setState(() {
       _selectedColor = value;
     });
   }
 
-  Future<void> _updateSize(String value) async {
-    await _settingsService.setFloatingMicSize(value);
+  void _updateSize(String value) {
     setState(() {
       _selectedSize = value;
     });
   }
 
-  Future<void> _updateIcon(String value) async {
-    await _settingsService.setFloatingMicIcon(value);
+  void _updateIcon(String value) {
     setState(() {
       _selectedIcon = value;
     });
+  }
+
+  Future<void> _saveSettings() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      await _settingsService.setFloatingMicColor(_selectedColor);
+      await _settingsService.setFloatingMicSize(_selectedSize);
+      await _settingsService.setFloatingMicIcon(_selectedIcon);
+
+      String iconColorHex = '#FFFFFF';
+      if (_selectedColor != 'theme') {
+        final color = _hexToColor(_selectedColor);
+        if (color.computeLuminance() > 0.5) {
+          iconColorHex = '#000000';
+        }
+      }
+      await _settingsService.setFloatingMicIconColor(iconColorHex);
+
+      await _platform.invokeMethod('updateFloatingMicSettings');
+
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.greenAccent),
+                SizedBox(width: 8),
+                Text('Customization saved & applied!'),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving settings: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   Color _hexToColor(String hex) {
@@ -139,6 +194,14 @@ class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
           'Customize Floating Mic',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check_rounded),
+            tooltip: 'Save',
+            onPressed: _saveSettings,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -386,6 +449,25 @@ class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: FilledButton.icon(
+            onPressed: _saveSettings,
+            icon: const Icon(Icons.save_rounded),
+            label: const Text(
+              'Save & Apply Style',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

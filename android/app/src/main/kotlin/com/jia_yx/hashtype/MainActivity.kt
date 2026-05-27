@@ -52,6 +52,10 @@ class MainActivity: FlutterActivity() {
                     startActivity(intent)
                     result.success(true)
                 }
+                "updateFloatingMicSettings" -> {
+                    HashtypeFloatingService.updateSettings()
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }

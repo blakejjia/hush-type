@@ -92,6 +92,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         viewModel = VoiceImeViewModel(this)
         viewModel.setListener(this)
         
@@ -447,6 +448,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
         hideFloatingWidget()
         handler.removeCallbacksAndMessages(null)
@@ -523,6 +525,31 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         val layoutParams = params
         if (layoutParams != null && floatingView != null && floatingView?.windowToken != null) {
             windowManager.updateViewLayout(floatingView, layoutParams)
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var instance: HashtypeFloatingService? = null
+
+        fun updateSettings() {
+            instance?.let { service ->
+                service.handler.post {
+                    val enabled = service.sharedPreferences.getBoolean("flutter.floating_mic_enabled", false)
+                    if (enabled) {
+                        if (service.floatingView == null) {
+                            service.isMuted = false
+                            service.muteHandler.removeCallbacks(service.unmuteRunnable)
+                            service.setupFloatingWidget()
+                        } else {
+                            service.applySizeSettings(service.floatingView!!)
+                            service.onStateChanged(service.viewModel.getCurrentState())
+                        }
+                    } else {
+                        service.hideFloatingWidget()
+                    }
+                }
+            }
         }
     }
 }
