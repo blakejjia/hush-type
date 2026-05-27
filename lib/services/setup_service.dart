@@ -39,7 +39,7 @@ class SetupService extends ChangeNotifier {
     final sttSummary = await sttService.getSummary();
     _isSttConfigured = !sttSummary.needsConfiguration;
     
-    _isComplete = _hasMicPermission && _isImeEnabled && _isSttConfigured;
+    _isComplete = _hasMicPermission && _isSttConfigured;
     notifyListeners();
     return _isComplete;
   }

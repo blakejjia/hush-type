@@ -34,6 +34,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
   bool _floatingMicEnabled = false;
   bool _accessibilityEnabled = false;
+  bool _imeEnabled = false;
 
   @override
   void initState() {
@@ -68,6 +69,11 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       accessibilityEnabled = await _platform.invokeMethod<bool>('isAccessibilityServiceEnabled') ?? false;
     } catch (_) {}
 
+    bool imeEnabled = false;
+    try {
+      imeEnabled = await _platform.invokeMethod<bool>('isIMEEnabled') ?? false;
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _llmEnabled = llmSummary.enabled;
@@ -79,6 +85,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         _showPeriodButton = showPeriod;
         _floatingMicEnabled = floatingEnabled;
         _accessibilityEnabled = accessibilityEnabled;
+        _imeEnabled = imeEnabled;
       });
     }
 
@@ -141,6 +148,28 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
               ),
               const SizedBox(height: 24),
               _buildSectionHeader(context, 'Keyboard'),
+              _buildSettingTile(
+                context,
+                icon: Icons.keyboard_rounded,
+                title: 'Enable Keyboard',
+                subtitle: _imeEnabled
+                    ? 'Hashtype keyboard is active'
+                    : 'Tap to enable in system settings',
+                subtitleColor: _imeEnabled ? null : Colors.orange,
+                onTap: () async {
+                  try {
+                    await _platform.invokeMethod('openIMESettings');
+                  } catch (_) {}
+                },
+                trailing: Switch(
+                  value: _imeEnabled,
+                  onChanged: (v) async {
+                    try {
+                      await _platform.invokeMethod('openIMESettings');
+                    } catch (_) {}
+                  },
+                ),
+              ),
               _buildSettingTile(
                 context,
                 icon: Icons.keyboard_outlined,

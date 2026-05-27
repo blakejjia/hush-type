@@ -130,17 +130,6 @@ class TestPage extends StatelessWidget {
           ),
           _buildStatusItem(
             context,
-            'Keyboard Enabled',
-            setup.isImeEnabled,
-            onAction: () async {
-              try {
-                await platform.invokeMethod('openIMESettings');
-              } catch (_) {}
-              // We'll check again when app resumes, handled in main.dart
-            },
-          ),
-          _buildStatusItem(
-            context,
             'AI Configuration',
             setup.isSttConfigured,
             onAction: () async {

@@ -8,6 +8,10 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+import android.graphics.Color
+import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.MaterialColors
+
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.jia_yx.hashtype/ime"
 
@@ -15,6 +19,44 @@ class MainActivity: FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
+                "getSystemThemeColors" -> {
+                    try {
+                        val themedContext = DynamicColors.wrapContextIfAvailable(
+                            this,
+                            com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar
+                        )
+                        val secondaryContainer = MaterialColors.getColor(
+                            themedContext,
+                            com.google.android.material.R.attr.colorSecondaryContainer,
+                            Color.parseColor("#E8DEF8")
+                        )
+                        val onSecondaryContainer = MaterialColors.getColor(
+                            themedContext,
+                            com.google.android.material.R.attr.colorOnSecondaryContainer,
+                            Color.parseColor("#21005D")
+                        )
+                        val errorContainer = MaterialColors.getColor(
+                            themedContext,
+                            com.google.android.material.R.attr.colorErrorContainer,
+                            Color.parseColor("#F9DEDC")
+                        )
+                        val onErrorContainer = MaterialColors.getColor(
+                            themedContext,
+                            com.google.android.material.R.attr.colorOnErrorContainer,
+                            Color.parseColor("#410E0B")
+                        )
+
+                        val colorsMap = mapOf(
+                            "colorSecondaryContainer" to String.format("#%06X", 0xFFFFFF and secondaryContainer),
+                            "colorOnSecondaryContainer" to String.format("#%06X", 0xFFFFFF and onSecondaryContainer),
+                            "colorErrorContainer" to String.format("#%06X", 0xFFFFFF and errorContainer),
+                            "colorOnErrorContainer" to String.format("#%06X", 0xFFFFFF and onErrorContainer)
+                        )
+                        result.success(colorsMap)
+                    } catch (e: Exception) {
+                        result.error("COLOR_ERROR", e.message, null)
+                    }
+                }
                 "openIMESettings" -> {
                     val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK

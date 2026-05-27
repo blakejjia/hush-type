@@ -29,6 +29,7 @@ class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
   String _selectedSize = 'medium';
   String _selectedIcon = 'mic';
   bool _isMockRecording = false;
+  Map<String, String>? _systemThemeColors;
 
   final List<PresetColor> _presets = const [
     PresetColor(name: 'Indigo', color: Color(0xFF6366F1), hex: '#FF6366F1'),
@@ -61,11 +62,24 @@ class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
     final color = await _settingsService.getFloatingMicColor();
     final size = await _settingsService.getFloatingMicSize();
     final icon = await _settingsService.getFloatingMicIcon();
+
+    Map<String, String>? systemThemeColors;
+    try {
+      final Map<dynamic, dynamic>? result =
+          await _platform.invokeMethod('getSystemThemeColors');
+      if (result != null) {
+        systemThemeColors = result.cast<String, String>();
+      }
+    } catch (e) {
+      debugPrint('Failed to get system theme colors: $e');
+    }
+
     if (mounted) {
       setState(() {
         _selectedColor = color;
         _selectedSize = size;
         _selectedIcon = icon;
+        _systemThemeColors = systemThemeColors;
       });
     }
   }
@@ -176,11 +190,21 @@ class _FloatingMicCustomizePageState extends State<FloatingMicCustomizePage> {
     Color previewIconColor;
 
     if (_isMockRecording) {
-      previewBg = theme.colorScheme.errorContainer;
-      previewIconColor = theme.colorScheme.onErrorContainer;
+      if (_selectedColor == 'theme' && _systemThemeColors != null) {
+        previewBg = _hexToColor(_systemThemeColors!['colorErrorContainer']!);
+        previewIconColor = _hexToColor(_systemThemeColors!['colorOnErrorContainer']!);
+      } else {
+        previewBg = theme.colorScheme.errorContainer;
+        previewIconColor = theme.colorScheme.onErrorContainer;
+      }
     } else if (_selectedColor == 'theme') {
-      previewBg = theme.colorScheme.secondaryContainer;
-      previewIconColor = theme.colorScheme.onSecondaryContainer;
+      if (_systemThemeColors != null) {
+        previewBg = _hexToColor(_systemThemeColors!['colorSecondaryContainer']!);
+        previewIconColor = _hexToColor(_systemThemeColors!['colorOnSecondaryContainer']!);
+      } else {
+        previewBg = theme.colorScheme.secondaryContainer;
+        previewIconColor = theme.colorScheme.onSecondaryContainer;
+      }
     } else {
       previewBg = _hexToColor(_selectedColor);
       previewIconColor = Colors.white;
