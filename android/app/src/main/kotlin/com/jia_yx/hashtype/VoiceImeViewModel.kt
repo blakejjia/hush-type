@@ -52,6 +52,10 @@ class VoiceImeViewModel(private val context: Context) {
         this.listener = listener
     }
 
+    fun getCurrentState(): ImeState {
+        return state
+    }
+
     fun reset() {
         val sttConfig = ImeSettingsResolver.loadSTTConfig(context)
         val hasPermission = ContextCompat.checkSelfPermission(

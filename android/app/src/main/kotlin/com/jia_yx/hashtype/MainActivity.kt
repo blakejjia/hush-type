@@ -28,6 +28,30 @@ class MainActivity: FlutterActivity() {
                     val myImeId = "${context.packageName}/.VoiceInputMethodService"
                     result.success(enabledInputMethodIds.contains(myImeId))
                 }
+                "isOverlayPermissionGranted" -> {
+                    result.success(Settings.canDrawOverlays(this))
+                }
+                "requestOverlayPermission" -> {
+                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                    intent.data = android.net.Uri.parse("package:$packageName")
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(intent)
+                    result.success(true)
+                }
+                "isAccessibilityServiceEnabled" -> {
+                    val expected = "$packageName/${HashtypeFloatingService::class.java.canonicalName}"
+                    val settingValue = Settings.Secure.getString(
+                        contentResolver,
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                    )
+                    result.success(settingValue?.contains(expected) == true)
+                }
+                "openAccessibilitySettings" -> {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(intent)
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }

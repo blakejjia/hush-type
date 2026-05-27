@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/app_settings_service.dart';
 import '../../services/setup_service.dart';
 import '../../services/stt_settings_service.dart';
@@ -17,7 +18,9 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver {
+  static const _platform = MethodChannel('com.jia_yx.hashtype/ime');
+
   final STTSettingsService _sttSettingsService = STTSettingsService();
   final LLMSettingsService _llmSettingsService = LLMSettingsService();
   bool _llmEnabled = true;
@@ -28,10 +31,27 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _llmNeedsConfig = false;
   bool _sttNeedsConfig = false;
 
+  bool _floatingMicEnabled = false;
+  bool _accessibilityEnabled = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadSettings();
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -40,6 +60,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final sttSummary = await _sttSettingsService.getSummary();
     final languageSub = await appSettings.getSelectedLanguageNames();
     final showPeriod = await appSettings.getShowPeriodButton();
+    final floatingEnabled = await appSettings.getFloatingMicEnabled();
+
+    bool accessibilityEnabled = false;
+    try {
+      accessibilityEnabled = await _platform.invokeMethod<bool>('isAccessibilityServiceEnabled') ?? false;
+    } catch (_) {}
 
     if (mounted) {
       setState(() {
@@ -50,6 +76,8 @@ class _SettingsPageState extends State<SettingsPage> {
         _sttNeedsConfig = sttSummary.needsConfiguration;
         _languageSubtitle = languageSub;
         _showPeriodButton = showPeriod;
+        _floatingMicEnabled = floatingEnabled;
+        _accessibilityEnabled = accessibilityEnabled;
       });
     }
 
@@ -127,6 +155,48 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
               ),
+              const SizedBox(height: 24),
+              _buildSectionHeader(context, 'Floating Voice Input'),
+              _buildSettingTile(
+                context,
+                icon: Icons.bubble_chart_outlined,
+                title: 'Enable Floating Mic',
+                subtitle: 'Show a draggable mic button over other apps',
+                trailing: Switch(
+                  value: _floatingMicEnabled,
+                  onChanged: (v) async {
+                    if (v) {
+                      final overlayGranted = await _platform.invokeMethod<bool>('isOverlayPermissionGranted') ?? false;
+                      if (!overlayGranted) {
+                        await _platform.invokeMethod('requestOverlayPermission');
+                        return;
+                      }
+                    }
+                    await AppSettingsService().setFloatingMicEnabled(v);
+                    setState(() {
+                      _floatingMicEnabled = v;
+                    });
+                  },
+                ),
+              ),
+              if (_floatingMicEnabled) ...[
+                _buildSettingTile(
+                  context,
+                  icon: Icons.accessibility_new_rounded,
+                  title: 'Auto-Paste Helper',
+                  subtitle: _accessibilityEnabled
+                      ? 'Accessibility Service is active'
+                      : 'Tap to enable automatic pasting',
+                  subtitleColor: _accessibilityEnabled ? null : Colors.orange,
+                  onTap: () async {
+                    await _platform.invokeMethod('openAccessibilitySettings');
+                  },
+                  trailing: Icon(
+                    _accessibilityEnabled ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                    color: _accessibilityEnabled ? Colors.green : Colors.orange,
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               _buildSectionHeader(context, 'Voice & Language'),
               _buildSettingTile(

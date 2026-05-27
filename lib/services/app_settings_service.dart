@@ -4,6 +4,17 @@ class AppSettingsService {
   static const String _isSetupCompleteKey = 'isSetupComplete';
   static const String _selectedLanguagesKey = 'flutter.selected_languages';
   static const String _showPeriodButtonKey = 'show_period_button';
+  static const String _floatingMicEnabledKey = 'floating_mic_enabled';
+
+  Future<void> setFloatingMicEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_floatingMicEnabledKey, value);
+  }
+
+  Future<bool> getFloatingMicEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_floatingMicEnabledKey) ?? false;
+  }
 
   static const List<Map<String, String>> availableLanguages = [
     {'name': 'English (US)', 'code': 'en_US'},
