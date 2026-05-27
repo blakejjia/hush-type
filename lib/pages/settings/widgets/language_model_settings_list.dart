@@ -118,16 +118,6 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
           child: Column(
             children: [
               MainProviderTile(
-                id: 'cloud',
-                title: 'Cloud',
-                subtitle: 'Reliable accuracy. (Not ready yet)',
-                icon: Icons.cloud_outlined,
-                isSelected: _providerController.selectedProvider == 'cloud',
-                isActive: _providerController.selectedProvider == 'cloud',
-                enabled: false,
-                showComingSoon: true,
-              ),
-              MainProviderTile(
                 id: 'cloud_providers',
                 title: 'Bring Your Own Key',
                 subtitle: 'Use your own API key with supported providers.',
