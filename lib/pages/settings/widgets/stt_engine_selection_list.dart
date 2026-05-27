@@ -116,7 +116,7 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
                       children: _providerController.availableModels
                           .map((m) => _buildModelTile(
                                 m.id,
-                                'Owner: ${m.ownedBy}',
+                                m.ownedBy,
                                 _providerController.selectedModel == m.id,
                               ))
                           .toList(),
@@ -129,7 +129,7 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
     );
   }
 
-  Widget _buildModelTile(String name, String desc, bool active) {
+  Widget _buildModelTile(String name, String owner, bool active) {
     final colorScheme = Theme.of(context).colorScheme;
     final isSelected = _providerController.selectedModel == name;
 
@@ -148,8 +148,16 @@ class _STTEngineSelectionListState extends State<STTEngineSelectionList> {
         leading: Radio<String>(
           value: name,
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(desc),
+        title: Text(
+          owner,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          name,
+          style: const TextStyle(fontSize: 12),
+          overflow: TextOverflow.ellipsis,
+        ),
         trailing: active ? Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(4)),

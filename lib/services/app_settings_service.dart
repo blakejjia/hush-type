@@ -66,4 +66,50 @@ class AppSettingsService {
     }
     return names.join(', ');
   }
+
+  static const String _floatingMicColorKey = 'floating_mic_color';
+  static const String _floatingMicIconColorKey = 'floating_mic_icon_color';
+  static const String _floatingMicSizeKey = 'floating_mic_size';
+  static const String _floatingMicIconKey = 'floating_mic_icon';
+
+  Future<String> getFloatingMicColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_floatingMicColorKey) ?? 'theme';
+  }
+
+  Future<void> setFloatingMicColor(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_floatingMicColorKey, value);
+  }
+
+  Future<String> getFloatingMicIconColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_floatingMicIconColorKey) ?? '#FFFFFF';
+  }
+
+  Future<void> setFloatingMicIconColor(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_floatingMicIconColorKey, value);
+  }
+
+  Future<String> getFloatingMicSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_floatingMicSizeKey) ?? 'medium';
+  }
+
+  Future<void> setFloatingMicSize(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_floatingMicSizeKey, value);
+  }
+
+  Future<String> getFloatingMicIcon() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_floatingMicIconKey) ?? 'mic';
+  }
+
+  Future<void> setFloatingMicIcon(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_floatingMicIconKey, value);
+  }
 }
+

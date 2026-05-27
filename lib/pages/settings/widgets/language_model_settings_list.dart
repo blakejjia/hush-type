@@ -221,12 +221,15 @@ class _LanguageModelSettingsListState extends State<LanguageModelSettingsList> {
         leading: Radio<String>(
           value: name,
         ),
-        title: Row(
-          children: [
-            Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-            const SizedBox(width: 8),
-            Text('Owner: $owner', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          ],
+        title: Text(
+          owner,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          name,
+          style: const TextStyle(fontSize: 12),
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

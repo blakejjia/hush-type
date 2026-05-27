@@ -10,6 +10,7 @@ import 'language_model_settings_page.dart';
 import 'speech_to_text_settings_page.dart';
 import 'theme_color_page.dart';
 import 'about_page.dart';
+import 'floating_mic_customize_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -195,6 +196,21 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                     _accessibilityEnabled ? Icons.check_circle_outline : Icons.warning_amber_rounded,
                     color: _accessibilityEnabled ? Colors.green : Colors.orange,
                   ),
+                ),
+                _buildSettingTile(
+                  context,
+                  icon: Icons.tune_rounded,
+                  title: 'Customize Floating Mic',
+                  subtitle: 'Change colors, sizes, and icons',
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FloatingMicCustomizePage(),
+                      ),
+                    );
+                    _loadSettings();
+                  },
                 ),
               ],
               const SizedBox(height: 24),

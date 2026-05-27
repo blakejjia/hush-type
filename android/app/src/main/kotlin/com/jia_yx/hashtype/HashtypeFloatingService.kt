@@ -79,6 +79,14 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             } else {
                 hideFloatingWidget()
             }
+        } else if (key == "flutter.floating_mic_size" || key == "flutter.floating_mic_color" || key == "flutter.floating_mic_icon" || key == "flutter.floating_mic_icon_color") {
+            handler.post {
+                val view = floatingView
+                if (view != null) {
+                    applySizeSettings(view)
+                    onStateChanged(viewModel.getCurrentState())
+                }
+            }
         }
     }
 
@@ -131,6 +139,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             y = displayMetrics.heightPixels / 2
         }
 
+        applySizeSettings(floatingView!!)
         windowManager.addView(floatingView, params)
         setupTouchListener()
         viewModel.reset()
@@ -306,26 +315,51 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                 stopPulseAnimation()
                 micIcon?.visibility = View.VISIBLE
                 spinner?.visibility = View.GONE
-                micIcon?.setImageResource(R.drawable.ic_mic_m3)
+                micIcon?.setImageResource(getCustomIconResource())
                 
-                // Restore standard colors
-                val defaultBgColor = MaterialColors.getColor(
-                    fabCard,
-                    com.google.android.material.R.attr.colorSecondaryContainer,
-                    Color.parseColor("#E8DEF8")
-                )
-                val defaultIconColor = MaterialColors.getColor(
-                    fabCard,
-                    com.google.android.material.R.attr.colorOnSecondaryContainer,
-                    Color.parseColor("#21005D")
-                )
-                fabCard.setCardBackgroundColor(ColorStateList.valueOf(defaultBgColor))
-                micIcon?.imageTintList = ColorStateList.valueOf(defaultIconColor)
+                // Restore standard or custom colors
+                val colorStr = sharedPreferences.getString("flutter.floating_mic_color", "theme") ?: "theme"
+                if (colorStr == "theme") {
+                    val defaultBgColor = MaterialColors.getColor(
+                        fabCard,
+                        com.google.android.material.R.attr.colorSecondaryContainer,
+                        Color.parseColor("#E8DEF8")
+                    )
+                    val defaultIconColor = MaterialColors.getColor(
+                        fabCard,
+                        com.google.android.material.R.attr.colorOnSecondaryContainer,
+                        Color.parseColor("#21005D")
+                    )
+                    fabCard.setCardBackgroundColor(ColorStateList.valueOf(defaultBgColor))
+                    micIcon?.imageTintList = ColorStateList.valueOf(defaultIconColor)
+                } else {
+                    try {
+                        val bgColor = Color.parseColor(colorStr)
+                        fabCard.setCardBackgroundColor(ColorStateList.valueOf(bgColor))
+                        
+                        val iconColorStr = sharedPreferences.getString("flutter.floating_mic_icon_color", "#FFFFFF") ?: "#FFFFFF"
+                        val iconColor = Color.parseColor(iconColorStr)
+                        micIcon?.imageTintList = ColorStateList.valueOf(iconColor)
+                    } catch (e: Exception) {
+                        val defaultBgColor = MaterialColors.getColor(
+                            fabCard,
+                            com.google.android.material.R.attr.colorSecondaryContainer,
+                            Color.parseColor("#E8DEF8")
+                        )
+                        val defaultIconColor = MaterialColors.getColor(
+                            fabCard,
+                            com.google.android.material.R.attr.colorOnSecondaryContainer,
+                            Color.parseColor("#21005D")
+                        )
+                        fabCard.setCardBackgroundColor(ColorStateList.valueOf(defaultBgColor))
+                        micIcon?.imageTintList = ColorStateList.valueOf(defaultIconColor)
+                    }
+                }
             }
             is VoiceImeViewModel.ImeState.Recording -> {
                 micIcon?.visibility = View.VISIBLE
                 spinner?.visibility = View.GONE
-                micIcon?.setImageResource(R.drawable.ic_mic_m3)
+                micIcon?.setImageResource(getCustomIconResource())
                 startPulseAnimation()
 
                 // Highlight recording color (Error container is a nice crimson tint in dynamic theme)
@@ -359,7 +393,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                 stopPulseAnimation()
                 micIcon?.visibility = View.VISIBLE
                 spinner?.visibility = View.GONE
-                micIcon?.setImageResource(R.drawable.ic_mic_m3)
+                micIcon?.setImageResource(getCustomIconResource())
 
                 // Error visual: background turns bright red
                 val errorBgColor = Color.parseColor("#B3261E") // MD3 standard error
@@ -439,5 +473,56 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
+    }
+
+    private fun getCustomIconResource(): Int {
+        val iconStr = sharedPreferences.getString("flutter.floating_mic_icon", "mic") ?: "mic"
+        return when (iconStr) {
+            "heart" -> R.drawable.ic_heart_m3
+            "star" -> R.drawable.ic_star_m3
+            "chat" -> R.drawable.ic_chat_m3
+            "music" -> R.drawable.ic_music_m3
+            else -> R.drawable.ic_mic_m3
+        }
+    }
+
+    private fun applySizeSettings(view: View) {
+        val fabCard = view.findViewById<MaterialCardView>(R.id.fab_card) ?: return
+        val micIcon = view.findViewById<ImageView>(R.id.mic_icon) ?: return
+        val spinner = view.findViewById<ProgressBar>(R.id.loading_spinner) ?: return
+
+        val sizeStr = sharedPreferences.getString("flutter.floating_mic_size", "medium") ?: "medium"
+        val density = resources.displayMetrics.density
+
+        val (cardSizeDp, iconSizeDp, spinnerSizeDp) = when (sizeStr) {
+            "small" -> Triple(44, 20, 22)
+            "large" -> Triple(68, 28, 34)
+            else -> Triple(56, 24, 28) // medium
+        }
+
+        val cardSizePx = (cardSizeDp * density).toInt()
+        val iconSizePx = (iconSizeDp * density).toInt()
+        val spinnerSizePx = (spinnerSizeDp * density).toInt()
+
+        val cardParams = fabCard.layoutParams
+        cardParams.width = cardSizePx
+        cardParams.height = cardSizePx
+        fabCard.layoutParams = cardParams
+        fabCard.radius = (cardSizeDp / 2f) * density
+
+        val iconParams = micIcon.layoutParams
+        iconParams.width = iconSizePx
+        iconParams.height = iconSizePx
+        micIcon.layoutParams = iconParams
+
+        val spinnerParams = spinner.layoutParams
+        spinnerParams.width = spinnerSizePx
+        spinnerParams.height = spinnerSizePx
+        spinner.layoutParams = spinnerParams
+
+        val layoutParams = params
+        if (layoutParams != null && floatingView != null && floatingView?.windowToken != null) {
+            windowManager.updateViewLayout(floatingView, layoutParams)
+        }
     }
 }
