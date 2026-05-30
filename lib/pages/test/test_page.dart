@@ -2,12 +2,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../services/setup_service.dart';
+import '../../services/app_settings_service.dart';
 import '../settings/speech_to_text_settings_page.dart';
 
-class TestPage extends StatelessWidget {
+class TestPage extends StatefulWidget {
   const TestPage({super.key});
 
+  @override
+  State<TestPage> createState() => _TestPageState();
+}
+
+class _TestPageState extends State<TestPage> with WidgetsBindingObserver {
   static const platform = MethodChannel('com.jia_yx.hashtype/ime');
+  bool _isFloatingMicEnabled = false;
+  bool _isFloatingMicMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadFloatingMicState();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadFloatingMicState();
+      SetupService().checkStatus();
+    }
+  }
+
+  Future<void> _loadFloatingMicState() async {
+    final enabled = await AppSettingsService().getFloatingMicEnabled();
+    final mutedUntil = await AppSettingsService().getFloatingMicMutedUntil();
+    final isMuted = DateTime.now().millisecondsSinceEpoch < mutedUntil;
+    if (mounted) {
+      setState(() {
+        _isFloatingMicEnabled = enabled;
+        _isFloatingMicMuted = isMuted;
+      });
+    }
+  }
+
+  Future<void> _restoreFloatingMic() async {
+    await AppSettingsService().clearFloatingMicMuted();
+    try {
+      await platform.invokeMethod('updateFloatingMicSettings');
+    } catch (e) {
+      debugPrint('Error updating floating mic settings: $e');
+    }
+    await _loadFloatingMicState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +81,10 @@ class TestPage extends StatelessWidget {
               children: [
                 if (!setup.isComplete) ...[
                   _buildStatusCard(context, setup),
+                  const SizedBox(height: 24),
+                ],
+                if (_isFloatingMicEnabled && _isFloatingMicMuted) ...[
+                  _buildRestoreFloatingMicCard(context),
                   const SizedBox(height: 24),
                 ],
                 Card(
@@ -181,6 +236,59 @@ class TestPage extends StatelessWidget {
               ),
               child: const Text('Fix', style: TextStyle(fontSize: 12)),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRestoreFloatingMicCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.visibility_off_outlined, color: colorScheme.secondary, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Floating Mic is Hidden',
+                  style: TextStyle(
+                    color: colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'You muted/hid it. Bring it back now?',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          FilledButton.tonal(
+            onPressed: _restoreFloatingMic,
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Bring Back', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );

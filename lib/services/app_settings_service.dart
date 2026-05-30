@@ -111,5 +111,17 @@ class AppSettingsService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_floatingMicIconKey, value);
   }
+
+  static const String _floatingMicMutedUntilKey = 'floating_mic_muted_until';
+
+  Future<int> getFloatingMicMutedUntil() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_floatingMicMutedUntilKey) ?? 0;
+  }
+
+  Future<void> clearFloatingMicMuted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_floatingMicMutedUntilKey);
+  }
 }
 

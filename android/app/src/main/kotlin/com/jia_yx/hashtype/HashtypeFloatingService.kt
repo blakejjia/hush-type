@@ -228,9 +228,9 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                         hideDismissOverlay()
                         
                         if (target == 1) {
-                            dismissAndMuteWidget(15 * 60 * 1000L, "微麦克风已隐藏15分钟，在设置中可以重新开启。")
+                            dismissAndMuteWidget(15 * 60 * 1000L)
                         } else if (target == 2) {
-                            dismissAndMuteWidget(24 * 60 * 60 * 1000L, "微麦克风已隐藏1天，在设置中可以重新开启。")
+                            dismissAndMuteWidget(24 * 60 * 60 * 1000L)
                         }
                     } else {
                         // Short press (Click) logic
@@ -261,7 +261,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         }
     }
 
-    private fun dismissAndMuteWidget(durationMs: Long, toastMessage: String) {
+    private fun dismissAndMuteWidget(durationMs: Long) {
         floatingView?.animate()
             ?.alpha(0f)
             ?.scaleX(0.5f)
@@ -269,20 +269,18 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             ?.setDuration(300)
             ?.withEndAction {
                 hideFloatingWidget()
-                muteWidgetForDuration(durationMs, toastMessage)
+                muteWidgetForDuration(durationMs)
             }
             ?.start()
     }
 
-    private fun muteWidgetForDuration(durationMs: Long, toastMessage: String) {
+    private fun muteWidgetForDuration(durationMs: Long) {
         isMuted = true
         val muteUntil = System.currentTimeMillis() + durationMs
         sharedPreferences.edit().putLong("flutter.floating_mic_muted_until", muteUntil).apply()
         
         muteHandler.removeCallbacks(unmuteRunnable)
         muteHandler.postDelayed(unmuteRunnable, durationMs)
-        
-        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show()
     }
 
     private fun showDismissOverlay() {
@@ -564,31 +562,22 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     }
 
     private fun insertTextAtCursor(text: String) {
-        Log.d("HashtypeFloatService", "insertTextAtCursor: text='$text'")
-        
         // Copy to clipboard first
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("transcription", text)
         clipboard.setPrimaryClip(clip)
-        Log.d("HashtypeFloatService", "Copied text to clipboard.")
 
         // Try pasting immediately
         var pasted = tryPaste()
 
         // If it failed, try again after a small delay (allowing clipboard and focus to settle)
         if (!pasted) {
-            Log.d("HashtypeFloatService", "Initial paste failed. Retrying in 100ms...")
             handler.postDelayed({
                 val retryPasted = tryPaste()
-                if (retryPasted) {
-                    Log.d("HashtypeFloatService", "Paste retry succeeded!")
-                } else {
-                    Log.w("HashtypeFloatService", "Paste retry failed. Showing fallback toast.")
+                if (!retryPasted) {
                     Toast.makeText(this, "Transcribed: $text (Copied)", Toast.LENGTH_SHORT).show()
                 }
             }, 100)
-        } else {
-            Log.d("HashtypeFloatService", "Initial paste succeeded!")
         }
     }
 
@@ -598,34 +587,24 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         // 1. Try rootInActiveWindow first
         val rootNode = rootInActiveWindow
         if (rootNode != null) {
-            Log.d("HashtypeFloatService", "tryPaste: Checking rootInActiveWindow: ${rootNode.packageName}")
             val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             if (focusedNode != null) {
-                Log.d("HashtypeFloatService", "Found FOCUS_INPUT node in active window: className=${focusedNode.className}, isEditable=${focusedNode.isEditable}")
                 pasted = focusedNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                Log.d("HashtypeFloatService", "ACTION_PASTE result in active window: $pasted")
                 focusedNode.recycle()
-            } else {
-                Log.d("HashtypeFloatService", "No FOCUS_INPUT node found in active window.")
             }
             rootNode.recycle()
-        } else {
-            Log.d("HashtypeFloatService", "tryPaste: rootInActiveWindow is null")
         }
 
         // 2. If not pasted, search through all windows
         if (!pasted) {
             val activeWindows = windows
             if (activeWindows != null) {
-                Log.d("HashtypeFloatService", "tryPaste: Checking ${activeWindows.size} interactive windows...")
                 for (window in activeWindows) {
                     val root = window.root
                     if (root != null) {
                         val focusedNode = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                         if (focusedNode != null) {
-                            Log.d("HashtypeFloatService", "Found FOCUS_INPUT node in window ${window.id}: className=${focusedNode.className}, isEditable=${focusedNode.isEditable}")
                             pasted = focusedNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                            Log.d("HashtypeFloatService", "ACTION_PASTE result in window ${window.id}: $pasted")
                             focusedNode.recycle()
                             root.recycle()
                             if (pasted) {
@@ -636,8 +615,6 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                         }
                     }
                 }
-            } else {
-                Log.d("HashtypeFloatService", "tryPaste: windows list is null")
             }
         }
 

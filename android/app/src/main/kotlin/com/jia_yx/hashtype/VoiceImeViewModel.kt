@@ -525,7 +525,6 @@ class VoiceImeViewModel(private val context: Context) {
 
     private fun finishWithSuccess(message: String) {
         mainHandler.post {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             reset()
         }
     }
