@@ -68,6 +68,11 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     // Animation helper
     private var pulseAnimator: Animator? = null
 
+    // Dismiss target overlay elements
+    private var dismissOverlayView: View? = null
+    private var dismissOverlayParams: WindowManager.LayoutParams? = null
+    private var hoveredTarget: Int = 0 // 0 = none, 1 = 15m, 2 = 24h
+
     // Settings listener
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "flutter.floating_mic_enabled") {
@@ -110,8 +115,20 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     private fun checkAndShowWidget() {
         val enabled = sharedPreferences.getBoolean("flutter.floating_mic_enabled", false)
-        if (enabled && !isMuted && floatingView == null) {
+        val mutedUntil = sharedPreferences.getLong("flutter.floating_mic_muted_until", 0L)
+        val currentTime = System.currentTimeMillis()
+        val isCurrentlyMuted = currentTime < mutedUntil
+        
+        if (enabled && !isCurrentlyMuted && floatingView == null) {
+            isMuted = false
             setupFloatingWidget()
+        } else if (isCurrentlyMuted && floatingView == null) {
+            isMuted = true
+            val remainingMs = mutedUntil - currentTime
+            muteHandler.removeCallbacks(unmuteRunnable)
+            if (remainingMs > 0 && remainingMs < 24 * 60 * 60 * 1000L) {
+                muteHandler.postDelayed(unmuteRunnable, remainingMs)
+            }
         }
     }
 
@@ -175,7 +192,10 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                         handler.removeCallbacks(longPressRunnable)
                         
                         if (!isLongPressTriggered) {
-                            isDragging = true
+                            if (!isDragging) {
+                                isDragging = true
+                                showDismissOverlay()
+                            }
                             layoutParams.x = (initialX + deltaX).toInt()
                             layoutParams.y = (initialY + deltaY).toInt()
                             
@@ -189,6 +209,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                             if (layoutParams.y > maxY) layoutParams.y = maxY
 
                             windowManager.updateViewLayout(floatingView, layoutParams)
+                            updateHoverTargets(event.rawX, event.rawY)
                         }
                     }
                     true
@@ -201,13 +222,14 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                         vibrate()
                         stopVoiceRecording()
                     } else if (isDragging) {
-                        // Dragging finished. Check if Y is near the bottom to dismiss
-                        val displayMetrics = resources.displayMetrics
-                        val screenHeight = displayMetrics.heightPixels
-                        val dismissThreshold = 120 * displayMetrics.density // 120dp
+                        // Dragging finished. Check overlay target
+                        val target = hoveredTarget
+                        hideDismissOverlay()
                         
-                        if (layoutParams.y > screenHeight - dismissThreshold) {
-                            dismissAndMuteWidget()
+                        if (target == 1) {
+                            dismissAndMuteWidget(15 * 60 * 1000L, "微麦克风已隐藏15分钟，在设置中可以重新开启。")
+                        } else if (target == 2) {
+                            dismissAndMuteWidget(24 * 60 * 60 * 1000L, "微麦克风已隐藏1天，在设置中可以重新开启。")
                         }
                     } else {
                         // Short press (Click) logic
@@ -238,7 +260,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         }
     }
 
-    private fun dismissAndMuteWidget() {
+    private fun dismissAndMuteWidget(durationMs: Long, toastMessage: String) {
         floatingView?.animate()
             ?.alpha(0f)
             ?.scaleX(0.5f)
@@ -246,21 +268,141 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             ?.setDuration(300)
             ?.withEndAction {
                 hideFloatingWidget()
-                muteWidgetFor15Minutes()
+                muteWidgetForDuration(durationMs, toastMessage)
             }
             ?.start()
     }
 
-    private fun muteWidgetFor15Minutes() {
+    private fun muteWidgetForDuration(durationMs: Long, toastMessage: String) {
         isMuted = true
-        muteHandler.removeCallbacks(unmuteRunnable)
-        muteHandler.postDelayed(unmuteRunnable, 15 * 60 * 1000L) // 15 minutes
+        val muteUntil = System.currentTimeMillis() + durationMs
+        sharedPreferences.edit().putLong("flutter.floating_mic_muted_until", muteUntil).apply()
         
-        Toast.makeText(
+        muteHandler.removeCallbacks(unmuteRunnable)
+        muteHandler.postDelayed(unmuteRunnable, durationMs)
+        
+        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show()
+    }
+
+    private fun showDismissOverlay() {
+        if (dismissOverlayView != null) return
+        
+        val themedContext = DynamicColors.wrapContextIfAvailable(
             this,
-            "Floating Mic hidden for 15 minutes. Toggle in settings to show now.",
-            Toast.LENGTH_LONG
-        ).show()
+            com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar
+        )
+        
+        dismissOverlayView = LayoutInflater.from(themedContext).inflate(R.layout.layout_dismiss_targets, null)
+        
+        val density = resources.displayMetrics.density
+        val overlayHeightPx = (170 * density).toInt()
+        
+        dismissOverlayParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            overlayHeightPx,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            x = 0
+            y = 0
+        }
+        
+        val bottomPanel = dismissOverlayView?.findViewById<View>(R.id.bottom_panel)
+        bottomPanel?.translationY = overlayHeightPx.toFloat()
+        bottomPanel?.alpha = 0f
+        
+        try {
+            windowManager.addView(dismissOverlayView, dismissOverlayParams)
+            hoveredTarget = 0
+            
+            bottomPanel?.animate()
+                ?.translationY(0f)
+                ?.alpha(1f)
+                ?.setDuration(250)
+                ?.start()
+        } catch (e: Exception) {
+            Log.e("HashtypeFloatService", "Error showing dismiss overlay: ${e.message}")
+        }
+    }
+
+    private fun hideDismissOverlay() {
+        val view = dismissOverlayView ?: return
+        val bottomPanel = view.findViewById<View>(R.id.bottom_panel)
+        val density = resources.displayMetrics.density
+        val overlayHeightPx = if (view.height > 0) view.height.toFloat() else (170 * density)
+        
+        dismissOverlayView = null
+        dismissOverlayParams = null
+        hoveredTarget = 0
+        
+        bottomPanel?.animate()
+            ?.translationY(overlayHeightPx)
+            ?.alpha(0f)
+            ?.setDuration(200)
+            ?.withEndAction {
+                try {
+                    windowManager.removeView(view)
+                } catch (e: Exception) {
+                    Log.e("HashtypeFloatService", "Error removing dismiss overlay: ${e.message}")
+                }
+            }
+            ?.start()
+    }
+
+    private fun updateHoverTargets(rawX: Float, rawY: Float) {
+        val overlayView = dismissOverlayView ?: return
+        val displayMetrics = resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        val screenWidth = displayMetrics.widthPixels
+        
+        val density = displayMetrics.density
+        val overlayHeightPx = (170 * density).toInt()
+        
+        val inDismissZone = rawY > (screenHeight - overlayHeightPx)
+        
+        val card15m = overlayView.findViewById<MaterialCardView>(R.id.card_mute_15m) ?: return
+        val card24h = overlayView.findViewById<MaterialCardView>(R.id.card_mute_24h) ?: return
+        
+        var currentTarget = 0
+        if (inDismissZone) {
+            currentTarget = if (rawX < screenWidth / 2f) 1 else 2
+        }
+        
+        if (currentTarget != hoveredTarget) {
+            hoveredTarget = currentTarget
+            vibrate()
+            
+            animateCardHover(card15m, hoveredTarget == 1, false)
+            animateCardHover(card24h, hoveredTarget == 2, true)
+        }
+    }
+
+    private fun animateCardHover(card: MaterialCardView, isHovered: Boolean, isDayCard: Boolean) {
+        val scale = if (isHovered) 1.12f else 1.0f
+        
+        card.animate()
+            .scaleX(scale)
+            .scaleY(scale)
+            .setDuration(150)
+            .start()
+            
+        if (isHovered) {
+            if (isDayCard) {
+                card.strokeColor = Color.parseColor("#FFB4AB")
+                card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#4DB3261E")))
+            } else {
+                card.strokeColor = Color.parseColor("#D0BCFF")
+                card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#4D6750A4")))
+            }
+        } else {
+            card.strokeColor = Color.parseColor("#33FFFFFF")
+            card.setCardBackgroundColor(ColorStateList.valueOf(Color.parseColor("#26FFFFFF")))
+        }
     }
 
     private fun hideFloatingWidget() {
