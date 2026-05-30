@@ -98,6 +98,30 @@ class MainActivity: FlutterActivity() {
                     HashtypeFloatingService.updateSettings()
                     result.success(true)
                 }
+                "getHistory" -> {
+                    val limit = call.argument<Int>("limit") ?: 100
+                    val offset = call.argument<Int>("offset") ?: 0
+                    val db = HistoryDbHelper.getInstance(this)
+                    val records = db.getRecords(limit, offset)
+                    result.success(records)
+                }
+                "deleteHistoryItem" -> {
+                    val id = call.argument<Int>("id") ?: -1
+                    val db = HistoryDbHelper.getInstance(this)
+                    val count = db.deleteRecord(id)
+                    result.success(count > 0)
+                }
+                "clearHistory" -> {
+                    val db = HistoryDbHelper.getInstance(this)
+                    db.clearAllRecords()
+                    result.success(true)
+                }
+                "searchHistory" -> {
+                    val query = call.argument<String>("query") ?: ""
+                    val db = HistoryDbHelper.getInstance(this)
+                    val records = db.searchRecords(query)
+                    result.success(records)
+                }
                 else -> {
                     result.notImplemented()
                 }

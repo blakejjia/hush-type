@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../test/test_page.dart';
+import '../history/history_page.dart';
 import '../settings/settings_page.dart';
 
 class MainScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const TestPage(),
+    const HistoryPage(),
     const SettingsPage(),
   ];
 
@@ -46,6 +48,11 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(Icons.keyboard_outlined),
               selectedIcon: Icon(Icons.keyboard),
               label: 'Test',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.history_outlined),
+              selectedIcon: Icon(Icons.history),
+              label: 'History',
             ),
             NavigationDestination(
               icon: Icon(Icons.settings_outlined),

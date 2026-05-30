@@ -179,6 +179,14 @@ class VoiceImeViewModel(private val context: Context) {
                         return@maybeRunLanguageModel
                     }
 
+                    val llmConfig = ImeSettingsResolver.loadLLMConfig(context)
+                    val llmUsed = if (llmConfig.enabled && llmConfig.ready && llmError == null) 1 else 0
+                    HistoryDbHelper.getInstance(context).addRecord(
+                        rawText = cleanedTranscript,
+                        processedText = textToCommit,
+                        llmUsed = llmUsed
+                    )
+
                     mainHandler.post {
                         listener?.onTextCommitted(textToCommit)
                         if (llmError == null) {
