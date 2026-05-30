@@ -26,6 +26,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
@@ -563,29 +564,84 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     }
 
     private fun insertTextAtCursor(text: String) {
-        val rootNode = rootInActiveWindow
-        if (rootNode != null) {
-            val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            if (focusedNode != null && focusedNode.isEditable) {
-                // Copy to clipboard first
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("transcription", text)
-                clipboard.setPrimaryClip(clip)
-                
-                // Execute paste
-                focusedNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                focusedNode.recycle()
-                rootNode.recycle()
-                return
-            }
-            rootNode.recycle()
-        }
-
-        // Fallback: copy to clipboard only
+        Log.d("HashtypeFloatService", "insertTextAtCursor: text='$text'")
+        
+        // Copy to clipboard first
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("transcription", text)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(this, "Transcribed: $text (Copied)", Toast.LENGTH_SHORT).show()
+        Log.d("HashtypeFloatService", "Copied text to clipboard.")
+
+        // Try pasting immediately
+        var pasted = tryPaste()
+
+        // If it failed, try again after a small delay (allowing clipboard and focus to settle)
+        if (!pasted) {
+            Log.d("HashtypeFloatService", "Initial paste failed. Retrying in 100ms...")
+            handler.postDelayed({
+                val retryPasted = tryPaste()
+                if (retryPasted) {
+                    Log.d("HashtypeFloatService", "Paste retry succeeded!")
+                } else {
+                    Log.w("HashtypeFloatService", "Paste retry failed. Showing fallback toast.")
+                    Toast.makeText(this, "Transcribed: $text (Copied)", Toast.LENGTH_SHORT).show()
+                }
+            }, 100)
+        } else {
+            Log.d("HashtypeFloatService", "Initial paste succeeded!")
+        }
+    }
+
+    private fun tryPaste(): Boolean {
+        var pasted = false
+
+        // 1. Try rootInActiveWindow first
+        val rootNode = rootInActiveWindow
+        if (rootNode != null) {
+            Log.d("HashtypeFloatService", "tryPaste: Checking rootInActiveWindow: ${rootNode.packageName}")
+            val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            if (focusedNode != null) {
+                Log.d("HashtypeFloatService", "Found FOCUS_INPUT node in active window: className=${focusedNode.className}, isEditable=${focusedNode.isEditable}")
+                pasted = focusedNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+                Log.d("HashtypeFloatService", "ACTION_PASTE result in active window: $pasted")
+                focusedNode.recycle()
+            } else {
+                Log.d("HashtypeFloatService", "No FOCUS_INPUT node found in active window.")
+            }
+            rootNode.recycle()
+        } else {
+            Log.d("HashtypeFloatService", "tryPaste: rootInActiveWindow is null")
+        }
+
+        // 2. If not pasted, search through all windows
+        if (!pasted) {
+            val activeWindows = windows
+            if (activeWindows != null) {
+                Log.d("HashtypeFloatService", "tryPaste: Checking ${activeWindows.size} interactive windows...")
+                for (window in activeWindows) {
+                    val root = window.root
+                    if (root != null) {
+                        val focusedNode = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                        if (focusedNode != null) {
+                            Log.d("HashtypeFloatService", "Found FOCUS_INPUT node in window ${window.id}: className=${focusedNode.className}, isEditable=${focusedNode.isEditable}")
+                            pasted = focusedNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+                            Log.d("HashtypeFloatService", "ACTION_PASTE result in window ${window.id}: $pasted")
+                            focusedNode.recycle()
+                            root.recycle()
+                            if (pasted) {
+                                break
+                            }
+                        } else {
+                            root.recycle()
+                        }
+                    }
+                }
+            } else {
+                Log.d("HashtypeFloatService", "tryPaste: windows list is null")
+            }
+        }
+
+        return pasted
     }
 
     override fun onDestroy() {
