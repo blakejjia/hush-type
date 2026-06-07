@@ -314,7 +314,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                 context,
                 icon: Icons.info_outline,
                 title: 'About',
-                subtitle: 'Version 1.0.0',
+                subtitle: 'Version 2.0.0',
                 onTap: () {
                   Navigator.push(
                     context,
