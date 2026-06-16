@@ -3,6 +3,7 @@ package com.jia_yx.hashtype
 import android.accessibilityservice.AccessibilityService
 import android.animation.Animator
 import android.animation.ObjectAnimator
+import java.util.Calendar
 import android.animation.PropertyValuesHolder
 import android.animation.ValueAnimator
 import android.content.ClipData
@@ -56,6 +57,13 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         isLongPressTriggered = true
         vibrate()
         startVoiceRecording()
+    }
+
+    private var isRecordingCancelled = false
+    private val cancelRecordingRunnable = Runnable {
+        isRecordingCancelled = true
+        vibrate()
+        cancelVoiceRecording()
     }
 
     // Dismiss mute timer
@@ -127,7 +135,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             isMuted = true
             val remainingMs = mutedUntil - currentTime
             muteHandler.removeCallbacks(unmuteRunnable)
-            if (remainingMs > 0 && remainingMs < 24 * 60 * 60 * 1000L) {
+            if (remainingMs > 0 && remainingMs < 48 * 60 * 60 * 1000L) {
                 muteHandler.postDelayed(unmuteRunnable, remainingMs)
             }
         }
@@ -177,10 +185,13 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     initialTouchY = event.rawY
                     isDragging = false
                     isLongPressTriggered = false
+                    isRecordingCancelled = false
                     
                     // Only schedule long press if we are in IDLE state (ready to record)
                     if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Idle) {
                         handler.postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                    } else if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Recording) {
+                        handler.postDelayed(cancelRecordingRunnable, ViewConfiguration.getLongPressTimeout().toLong())
                     }
                     true
                 }
@@ -191,6 +202,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     if (Math.abs(deltaX) > touchSlop || Math.abs(deltaY) > touchSlop) {
                         // Cancel long press timer because user is moving/dragging
                         handler.removeCallbacks(longPressRunnable)
+                        handler.removeCallbacks(cancelRecordingRunnable)
                         
                         if (!isLongPressTriggered) {
                             if (!isDragging) {
@@ -217,8 +229,11 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     handler.removeCallbacks(longPressRunnable)
+                    handler.removeCallbacks(cancelRecordingRunnable)
                     
-                    if (isLongPressTriggered) {
+                    if (isRecordingCancelled) {
+                        // Already cancelled by long press, do nothing
+                    } else if (isLongPressTriggered) {
                         // Push-to-talk ends: release stops recording and transcribes
                         vibrate()
                         stopVoiceRecording()
@@ -230,7 +245,16 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                         if (target == 1) {
                             dismissAndMuteWidget(15 * 60 * 1000L)
                         } else if (target == 2) {
-                            dismissAndMuteWidget(24 * 60 * 60 * 1000L)
+                            // Mute until tomorrow 12:00 AM (one calendar day)
+                            val calendar = Calendar.getInstance()
+                            calendar.add(Calendar.DAY_OF_YEAR, 1)
+                            calendar.set(Calendar.HOUR_OF_DAY, 0)
+                            calendar.set(Calendar.MINUTE, 0)
+                            calendar.set(Calendar.SECOND, 0)
+                            calendar.set(Calendar.MILLISECOND, 0)
+                            val remainingMs = calendar.timeInMillis - System.currentTimeMillis()
+                            val duration = if (remainingMs > 0) remainingMs else 24 * 60 * 60 * 1000L
+                            dismissAndMuteWidget(duration)
                         }
                     } else {
                         // Short press (Click) logic
@@ -261,7 +285,14 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         }
     }
 
+    private fun cancelVoiceRecording() {
+        if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Recording) {
+            viewModel.cancelRecording()
+        }
+    }
+
     private fun dismissAndMuteWidget(durationMs: Long) {
+        cancelVoiceRecording()
         floatingView?.animate()
             ?.alpha(0f)
             ?.scaleX(0.5f)
