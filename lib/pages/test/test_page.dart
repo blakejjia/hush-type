@@ -15,19 +15,28 @@ class TestPage extends StatefulWidget {
 class _TestPageState extends State<TestPage> with WidgetsBindingObserver {
   static const platform = MethodChannel('com.jia_yx.hashtype/ime');
   bool _isFloatingMicEnabled = false;
-  bool _isFloatingMicMuted = false;
+  bool _isFloatingMicShowing = false;
+  bool _isAccessibilityEnabled = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadFloatingMicState();
+    platform.setMethodCallHandler(_handleMethodCall);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    platform.setMethodCallHandler(null);
     super.dispose();
+  }
+
+  Future<void> _handleMethodCall(MethodCall call) async {
+    if (call.method == 'floatingMicStateChanged') {
+      _loadFloatingMicState();
+    }
   }
 
   @override
@@ -39,13 +48,21 @@ class _TestPageState extends State<TestPage> with WidgetsBindingObserver {
   }
 
   Future<void> _loadFloatingMicState() async {
+    await AppSettingsService().reload();
     final enabled = await AppSettingsService().getFloatingMicEnabled();
-    final mutedUntil = await AppSettingsService().getFloatingMicMutedUntil();
-    final isMuted = DateTime.now().millisecondsSinceEpoch < mutedUntil;
+    final showing = await AppSettingsService().getFloatingMicShowing();
+    bool accessibilityEnabled = false;
+    try {
+      accessibilityEnabled = await platform.invokeMethod<bool>('isAccessibilityServiceEnabled') ?? false;
+    } catch (e) {
+      debugPrint('Error checking accessibility service: $e');
+    }
+
     if (mounted) {
       setState(() {
         _isFloatingMicEnabled = enabled;
-        _isFloatingMicMuted = isMuted;
+        _isFloatingMicShowing = showing;
+        _isAccessibilityEnabled = accessibilityEnabled;
       });
     }
   }
@@ -83,7 +100,7 @@ class _TestPageState extends State<TestPage> with WidgetsBindingObserver {
                   _buildStatusCard(context, setup),
                   const SizedBox(height: 24),
                 ],
-                if (_isFloatingMicEnabled && _isFloatingMicMuted) ...[
+                if (_isFloatingMicEnabled && _isAccessibilityEnabled && !_isFloatingMicShowing) ...[
                   _buildRestoreFloatingMicCard(context),
                   const SizedBox(height: 24),
                 ],

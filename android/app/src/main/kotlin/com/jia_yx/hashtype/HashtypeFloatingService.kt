@@ -138,7 +138,15 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             if (remainingMs > 0 && remainingMs < 48 * 60 * 60 * 1000L) {
                 muteHandler.postDelayed(unmuteRunnable, remainingMs)
             }
+            updateVisibilityState(false)
+        } else if (!enabled) {
+            updateVisibilityState(false)
         }
+    }
+
+    private fun updateVisibilityState(showing: Boolean) {
+        sharedPreferences.edit().putBoolean("flutter.floating_mic_showing", showing).apply()
+        MainActivity.notifyFloatingMicStateChanged()
     }
 
     private fun setupFloatingWidget() {
@@ -170,6 +178,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         windowManager.addView(floatingView, params)
         setupTouchListener()
         viewModel.reset()
+        updateVisibilityState(true)
     }
 
     private fun setupTouchListener() {
@@ -441,6 +450,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             windowManager.removeView(floatingView)
             floatingView = null
         }
+        updateVisibilityState(false)
     }
 
     private fun startPulseAnimation() {

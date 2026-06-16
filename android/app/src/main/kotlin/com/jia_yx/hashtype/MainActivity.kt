@@ -15,9 +15,24 @@ import com.google.android.material.color.MaterialColors
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.jia_yx.hashtype/ime"
 
+    companion object {
+        @Volatile
+        private var instance: MainActivity? = null
+        private var channel: MethodChannel? = null
+
+        fun notifyFloatingMicStateChanged() {
+            instance?.runOnUiThread {
+                channel?.invokeMethod("floatingMicStateChanged", null)
+            }
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        instance = this
+        val methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        channel = methodChannel
+        methodChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getSystemThemeColors" -> {
                     try {
@@ -127,5 +142,13 @@ class MainActivity: FlutterActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        if (instance == this) {
+            instance = null
+            channel = null
+        }
+        super.onDestroy()
     }
 }
