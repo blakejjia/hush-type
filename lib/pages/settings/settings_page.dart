@@ -34,6 +34,8 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
   bool _floatingMicEnabled = false;
   bool _floatingMicAutoFold = false;
+  bool _floatingMicHideInLandscape = true;
+  bool _floatingMicHideInGames = true;
   bool _accessibilityEnabled = false;
   bool _imeEnabled = false;
 
@@ -65,6 +67,8 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     final showPeriod = await appSettings.getShowPeriodButton();
     final floatingEnabled = await appSettings.getFloatingMicEnabled();
     final floatingAutoFold = await appSettings.getFloatingMicAutoFold();
+    final floatingHideLandscape = await appSettings.getFloatingMicHideInLandscape();
+    final floatingHideGames = await appSettings.getFloatingMicHideInGames();
 
     bool accessibilityEnabled = false;
     try {
@@ -87,6 +91,8 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         _showPeriodButton = showPeriod;
         _floatingMicEnabled = floatingEnabled;
         _floatingMicAutoFold = floatingAutoFold;
+        _floatingMicHideInLandscape = floatingHideLandscape;
+        _floatingMicHideInGames = floatingHideGames;
         _accessibilityEnabled = accessibilityEnabled;
         _imeEnabled = imeEnabled;
       });
@@ -224,6 +230,36 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                       await AppSettingsService().setFloatingMicAutoFold(v);
                       setState(() {
                         _floatingMicAutoFold = v;
+                      });
+                    },
+                  ),
+                ),
+                _buildSettingTile(
+                  context,
+                  icon: Icons.screen_rotation_rounded,
+                  title: 'Hide in Landscape Mode',
+                  subtitle: 'Hide mic button when screen orientation is landscape',
+                  trailing: Switch(
+                    value: _floatingMicHideInLandscape,
+                    onChanged: (v) async {
+                      await AppSettingsService().setFloatingMicHideInLandscape(v);
+                      setState(() {
+                        _floatingMicHideInLandscape = v;
+                      });
+                    },
+                  ),
+                ),
+                _buildSettingTile(
+                  context,
+                  icon: Icons.sports_esports_outlined,
+                  title: 'Hide in Games',
+                  subtitle: 'Hide mic button automatically when playing games',
+                  trailing: Switch(
+                    value: _floatingMicHideInGames,
+                    onChanged: (v) async {
+                      await AppSettingsService().setFloatingMicHideInGames(v);
+                      setState(() {
+                        _floatingMicHideInGames = v;
                       });
                     },
                   ),

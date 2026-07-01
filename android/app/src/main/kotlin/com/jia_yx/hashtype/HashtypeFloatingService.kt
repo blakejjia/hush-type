@@ -10,7 +10,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.ApplicationInfo
 import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
@@ -86,6 +88,11 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         hideDismissOverlay()
     }
 
+    private var isHiddenDueToLandscape = false
+    private var isHiddenDueToGame = false
+    private var lastActivePackage = ""
+    private val gameCache = HashMap<String, Boolean>()
+
     // Settings listener
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "flutter.floating_mic_enabled") {
@@ -114,6 +121,29 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     checkAndFoldWidgetIfNeeded()
                 }
             }
+        } else if (key == "flutter.floating_mic_hide_in_landscape") {
+            handler.post {
+                val enabled = sharedPreferences.getBoolean("flutter.floating_mic_hide_in_landscape", true)
+                if (!enabled && isHiddenDueToLandscape) {
+                    isHiddenDueToLandscape = false
+                    checkAndShowWidget()
+                } else if (enabled && !isHiddenDueToLandscape && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    if (floatingView != null) {
+                        isHiddenDueToLandscape = true
+                        hideFloatingWidget()
+                    }
+                }
+            }
+        } else if (key == "flutter.floating_mic_hide_in_games") {
+            handler.post {
+                val enabled = sharedPreferences.getBoolean("flutter.floating_mic_hide_in_games", true)
+                if (!enabled && isHiddenDueToGame) {
+                    isHiddenDueToGame = false
+                    checkAndShowWidget()
+                } else if (enabled && !isHiddenDueToGame && lastActivePackage.isNotEmpty()) {
+                    handlePackageChanged(lastActivePackage)
+                }
+            }
         }
     }
 
@@ -136,6 +166,9 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     }
 
     private fun checkAndShowWidget() {
+        if (isHiddenDueToLandscape || isHiddenDueToGame) {
+            return
+        }
         val enabled = sharedPreferences.getBoolean("flutter.floating_mic_enabled", false)
         val mutedUntil = sharedPreferences.getLong("flutter.floating_mic_muted_until", 0L)
         val currentTime = System.currentTimeMillis()
@@ -751,8 +784,82 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // We only listen for focused inputs via findFocus when insertion is requested.
-        // No constant logging needed here.
+        if (event == null) return
+        
+        // Listen for window state changes to detect active app
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val packageName = event.packageName?.toString()
+            if (packageName != null) {
+                handlePackageChanged(packageName)
+            }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val autoHideLandscape = sharedPreferences.getBoolean("flutter.floating_mic_hide_in_landscape", true)
+        if (autoHideLandscape) {
+            if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                if (floatingView != null) {
+                    isHiddenDueToLandscape = true
+                    hideFloatingWidget()
+                }
+            } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                if (isHiddenDueToLandscape) {
+                    isHiddenDueToLandscape = false
+                    checkAndShowWidget()
+                }
+            }
+        }
+    }
+
+    private fun handlePackageChanged(packageName: String) {
+        lastActivePackage = packageName
+        val autoHideGaming = sharedPreferences.getBoolean("flutter.floating_mic_hide_in_games", true)
+        if (!autoHideGaming) {
+            if (isHiddenDueToGame) {
+                isHiddenDueToGame = false
+                checkAndShowWidget()
+            }
+            return
+        }
+
+        val isGame = isAppGame(packageName)
+        if (isGame) {
+            if (floatingView != null && !isHiddenDueToGame) {
+                isHiddenDueToGame = true
+                hideFloatingWidget()
+            }
+        } else {
+            if (isHiddenDueToGame) {
+                isHiddenDueToGame = false
+                checkAndShowWidget()
+            }
+        }
+    }
+
+    private fun isAppGame(packageName: String): Boolean {
+        if (packageName == "android" || packageName == "com.android.systemui" || packageName == "com.jia_yx.hashtype") {
+            return false
+        }
+        
+        gameCache[packageName]?.let { return it }
+        
+        var isGame = false
+        try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            isGame = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                appInfo.category == ApplicationInfo.CATEGORY_GAME
+            } else {
+                @Suppress("DEPRECATION")
+                (appInfo.flags and ApplicationInfo.FLAG_IS_GAME) != 0
+            }
+        } catch (e: Exception) {
+            // Package info not found or other errors
+        }
+        
+        gameCache[packageName] = isGame
+        return isGame
     }
 
     override fun onInterrupt() {}
