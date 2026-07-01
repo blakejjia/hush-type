@@ -136,6 +136,42 @@ class AppSettingsService {
     await prefs.setBool(_floatingMicShowingKey, value);
   }
 
+  static const String _floatingMicAutoFoldKey = 'floating_mic_auto_fold';
+
+  Future<bool> getFloatingMicAutoFold() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_floatingMicAutoFoldKey) ?? false;
+  }
+
+  Future<void> setFloatingMicAutoFold(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_floatingMicAutoFoldKey, value);
+  }
+
+  static const String _floatingMicHideInLandscapeKey = 'floating_mic_hide_in_landscape';
+
+  Future<bool> getFloatingMicHideInLandscape() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_floatingMicHideInLandscapeKey) ?? true;
+  }
+
+  Future<void> setFloatingMicHideInLandscape(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_floatingMicHideInLandscapeKey, value);
+  }
+
+  static const String _floatingMicHideInGamesKey = 'floating_mic_hide_in_games';
+
+  Future<bool> getFloatingMicHideInGames() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_floatingMicHideInGamesKey) ?? true;
+  }
+
+  Future<void> setFloatingMicHideInGames(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_floatingMicHideInGamesKey, value);
+  }
+
   Future<void> reload() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();

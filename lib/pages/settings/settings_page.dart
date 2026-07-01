@@ -33,6 +33,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _sttNeedsConfig = false;
 
   bool _floatingMicEnabled = false;
+  bool _floatingMicAutoFold = false;
   bool _accessibilityEnabled = false;
   bool _imeEnabled = false;
 
@@ -63,6 +64,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     final languageSub = await appSettings.getSelectedLanguageNames();
     final showPeriod = await appSettings.getShowPeriodButton();
     final floatingEnabled = await appSettings.getFloatingMicEnabled();
+    final floatingAutoFold = await appSettings.getFloatingMicAutoFold();
 
     bool accessibilityEnabled = false;
     try {
@@ -84,6 +86,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         _languageSubtitle = languageSub;
         _showPeriodButton = showPeriod;
         _floatingMicEnabled = floatingEnabled;
+        _floatingMicAutoFold = floatingAutoFold;
         _accessibilityEnabled = accessibilityEnabled;
         _imeEnabled = imeEnabled;
       });
@@ -210,6 +213,21 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                 ),
               ),
               if (_floatingMicEnabled) ...[
+                _buildSettingTile(
+                  context,
+                  icon: Icons.border_outer_rounded,
+                  title: 'Auto Fold on Border',
+                  subtitle: 'Hide mic button to screen edge when dragged to border',
+                  trailing: Switch(
+                    value: _floatingMicAutoFold,
+                    onChanged: (v) async {
+                      await AppSettingsService().setFloatingMicAutoFold(v);
+                      setState(() {
+                        _floatingMicAutoFold = v;
+                      });
+                    },
+                  ),
+                ),
                 _buildSettingTile(
                   context,
                   icon: Icons.accessibility_new_rounded,

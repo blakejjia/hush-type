@@ -105,6 +105,15 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     onStateChanged(viewModel.getCurrentState())
                 }
             }
+        } else if (key == "flutter.floating_mic_auto_fold") {
+            handler.post {
+                val enabled = sharedPreferences.getBoolean("flutter.floating_mic_auto_fold", false)
+                if (!enabled && isFolded) {
+                    unfoldWidgetInstantly()
+                } else if (enabled && !isFolded) {
+                    checkAndFoldWidgetIfNeeded()
+                }
+            }
         }
     }
 
@@ -192,6 +201,11 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    wasFoldedBeforeTouch = isFolded
+                    if (isFolded) {
+                        unfoldWidgetInstantly()
+                    }
+                    
                     initialX = layoutParams.x
                     initialY = layoutParams.y
                     initialTouchX = event.rawX
@@ -200,11 +214,13 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     isLongPressTriggered = false
                     isRecordingCancelled = false
                     
-                    // Only schedule long press if we are in IDLE state (ready to record)
-                    if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Idle) {
-                        handler.postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
-                    } else if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Recording) {
-                        handler.postDelayed(cancelRecordingRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                    // Only schedule long press if we are in IDLE state (ready to record) AND it wasn't folded
+                    if (!wasFoldedBeforeTouch) {
+                        if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Idle) {
+                            handler.postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                        } else if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Recording) {
+                            handler.postDelayed(cancelRecordingRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                        }
                     }
                     true
                 }
@@ -268,12 +284,18 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                             val remainingMs = calendar.timeInMillis - System.currentTimeMillis()
                             val duration = if (remainingMs > 0) remainingMs else 24 * 60 * 60 * 1000L
                             dismissAndMuteWidget(duration)
+                        } else {
+                            checkAndFoldWidgetIfNeeded()
                         }
                     } else {
                         // Short press (Click) logic
-                        vibrate()
-                        v.performClick()
-                        handleMicClicked()
+                        if (wasFoldedBeforeTouch) {
+                            // First tap on folded widget just unfolds it, no action.
+                        } else {
+                            vibrate()
+                            v.performClick()
+                            handleMicClicked()
+                        }
                     }
                     true
                 }
@@ -498,6 +520,10 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     private fun hideFloatingWidget() {
         stopPulseAnimation()
+        foldAnimator?.cancel()
+        foldAnimator = null
+        isFolded = false
+        foldedSide = 0
         if (floatingView != null) {
             windowManager.removeView(floatingView)
             floatingView = null
@@ -746,6 +772,101 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         startActivity(intent)
     }
 
+    private var isFolded = false
+    private var foldedSide = 0 // 0 = none, 1 = left, 2 = right
+    private var foldAnimator: ValueAnimator? = null
+    private var wasFoldedBeforeTouch = false
+
+    private fun foldWidget(toLeft: Boolean) {
+        val view = floatingView ?: return
+        val layoutParams = params ?: return
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val widgetWidth = view.width
+        
+        foldAnimator?.cancel()
+        
+        isFolded = true
+        foldedSide = if (toLeft) 1 else 2
+        
+        val startX = layoutParams.x
+        val visibleWidth = (widgetWidth * 0.3f).toInt()
+        val endX = if (toLeft) {
+            - (widgetWidth - visibleWidth)
+        } else {
+            screenWidth - visibleWidth
+        }
+        
+        val startAlpha = view.alpha
+        val endAlpha = 0.5f
+        
+        foldAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 300
+            addUpdateListener { animation ->
+                val fraction = animation.animatedValue as Float
+                layoutParams.x = (startX + (endX - startX) * fraction).toInt()
+                view.alpha = startAlpha + (endAlpha - startAlpha) * fraction
+                if (floatingView != null && floatingView?.windowToken != null) {
+                    try {
+                        windowManager.updateViewLayout(view, layoutParams)
+                    } catch (e: Exception) {
+                        Log.e("HashtypeFloatService", "Error updating layout for fold: ${e.message}")
+                    }
+                }
+            }
+        }
+        foldAnimator?.start()
+    }
+
+    private fun unfoldWidgetInstantly() {
+        val view = floatingView ?: return
+        val layoutParams = params ?: return
+        if (!isFolded) return
+        
+        foldAnimator?.cancel()
+        
+        isFolded = false
+        val toLeft = (foldedSide == 1)
+        foldedSide = 0
+        
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val widgetWidth = view.width
+        
+        layoutParams.x = if (toLeft) 0 else screenWidth - widgetWidth
+        view.alpha = 1.0f
+        
+        if (floatingView != null && floatingView?.windowToken != null) {
+            try {
+                windowManager.updateViewLayout(view, layoutParams)
+            } catch (e: Exception) {
+                Log.e("HashtypeFloatService", "Error updating layout for unfold: ${e.message}")
+            }
+        }
+    }
+
+    private fun checkAndFoldWidgetIfNeeded() {
+        val view = floatingView ?: return
+        val layoutParams = params ?: return
+        
+        val autoFoldEnabled = sharedPreferences.getBoolean("flutter.floating_mic_auto_fold", false)
+        if (!autoFoldEnabled) return
+        
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val widgetWidth = view.width
+        
+        val threshold = 60 * displayMetrics.density
+        val nearLeft = layoutParams.x < threshold
+        val nearRight = layoutParams.x > (screenWidth - widgetWidth - threshold)
+        
+        if (nearLeft) {
+            foldWidget(toLeft = true)
+        } else if (nearRight) {
+            foldWidget(toLeft = false)
+        }
+    }
+
     private fun getCustomIconResource(): Int {
         val iconStr = sharedPreferences.getString("flutter.floating_mic_icon", "mic") ?: "mic"
         return when (iconStr) {
@@ -793,6 +914,9 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
         val layoutParams = params
         if (layoutParams != null && floatingView != null && floatingView?.windowToken != null) {
+            if (isFolded) {
+                unfoldWidgetInstantly()
+            }
             windowManager.updateViewLayout(floatingView, layoutParams)
         }
     }
