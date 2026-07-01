@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:orientation="vertical"
-        android:background="#CC121212"
+        android:background="#99121212"
         android:paddingTop="16dp"
         android:paddingBottom="24dp"
         android:paddingStart="16dp"
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:text="拖拽至此隐藏微麦克风"
+            android:text="拖拽至按钮上隐藏微麦克风"
             android:textColor="#B3FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
@@ -38,16 +38,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:weightSum="2">
+            android:gravity="center_horizontal">
 
             <!-- 15 Minutes Target -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_mute_15m"
-                android:layout_width="0dp"
-                android:layout_height="96dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                app:cardCornerRadius="20dp"
+                android:layout_width="140dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="12dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="#33FFFFFF"
@@ -56,14 +55,15 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
                     android:gravity="center"
-                    android:padding="8dp">
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp">
 
                     <ImageView
                         android:id="@+id/icon_mute_15m"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:src="@drawable/ic_time_m3"
                         app:tint="#E5FFFFFF"
                         android:contentDescription="Mute 15 Minutes" />
@@ -72,10 +72,10 @@
                         android:id="@+id/text_mute_15m"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="不显示15分钟"
+                        android:layout_marginStart="6dp"
+                        android:text="暂别15分钟"
                         android:textColor="#E5FFFFFF"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textStyle="bold"
                         android:fontFamily="sans-serif-medium" />
                 </LinearLayout>
@@ -84,11 +84,10 @@
             <!-- 1 Day Target -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_mute_24h"
-                android:layout_width="0dp"
-                android:layout_height="96dp"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                app:cardCornerRadius="20dp"
+                android:layout_width="140dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="12dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="#33FFFFFF"
@@ -97,14 +96,15 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
                     android:gravity="center"
-                    android:padding="8dp">
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp">
 
                     <ImageView
                         android:id="@+id/icon_mute_24h"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:src="@drawable/ic_today_m3"
                         app:tint="#E5FFFFFF"
                         android:contentDescription="Mute 1 Day" />
@@ -113,10 +113,10 @@
                         android:id="@+id/text_mute_24h"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="一天不显示"
+                        android:layout_marginStart="6dp"
+                        android:text="一天不再见"
                         android:textColor="#E5FFFFFF"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textStyle="bold"
                         android:fontFamily="sans-serif-medium" />
                 </LinearLayout>

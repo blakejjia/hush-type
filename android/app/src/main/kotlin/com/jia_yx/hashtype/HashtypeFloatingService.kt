@@ -81,6 +81,10 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     private var dismissOverlayView: View? = null
     private var dismissOverlayParams: WindowManager.LayoutParams? = null
     private var hoveredTarget: Int = 0 // 0 = none, 1 = 15m, 2 = 24h
+    private var isHidingOverlay = false
+    private val autoHideOverlayRunnable = Runnable {
+        hideDismissOverlay()
+    }
 
     // Settings listener
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -324,7 +328,23 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     }
 
     private fun showDismissOverlay() {
-        if (dismissOverlayView != null) return
+        if (dismissOverlayView != null) {
+            if (isHidingOverlay) {
+                isHidingOverlay = false
+                val bottomPanel = dismissOverlayView?.findViewById<View>(R.id.bottom_panel)
+                bottomPanel?.animate()?.cancel()
+                bottomPanel?.animate()
+                    ?.translationY(0f)
+                    ?.alpha(1f)
+                    ?.setDuration(250)
+                    ?.start()
+                
+                // Restart the 15s timer
+                handler.removeCallbacks(autoHideOverlayRunnable)
+                handler.postDelayed(autoHideOverlayRunnable, 15000L)
+            }
+            return
+        }
         
         val themedContext = DynamicColors.wrapContextIfAvailable(
             this,
@@ -364,6 +384,10 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                 ?.alpha(1f)
                 ?.setDuration(250)
                 ?.start()
+
+            // Auto-hide after 15 seconds
+            handler.removeCallbacks(autoHideOverlayRunnable)
+            handler.postDelayed(autoHideOverlayRunnable, 15000L)
         } catch (e: Exception) {
             Log.e("HashtypeFloatService", "Error showing dismiss overlay: ${e.message}")
         }
@@ -371,45 +395,73 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     private fun hideDismissOverlay() {
         val view = dismissOverlayView ?: return
+        if (isHidingOverlay) return
+        isHidingOverlay = true
+        
+        handler.removeCallbacks(autoHideOverlayRunnable)
+        
         val bottomPanel = view.findViewById<View>(R.id.bottom_panel)
         val density = resources.displayMetrics.density
         val overlayHeightPx = if (view.height > 0) view.height.toFloat() else (170 * density)
-        
-        dismissOverlayView = null
-        dismissOverlayParams = null
-        hoveredTarget = 0
         
         bottomPanel?.animate()
             ?.translationY(overlayHeightPx)
             ?.alpha(0f)
             ?.setDuration(200)
             ?.withEndAction {
-                try {
-                    windowManager.removeView(view)
-                } catch (e: Exception) {
-                    Log.e("HashtypeFloatService", "Error removing dismiss overlay: ${e.message}")
+                if (isHidingOverlay && dismissOverlayView == view) {
+                    try {
+                        windowManager.removeView(view)
+                    } catch (e: Exception) {
+                        Log.e("HashtypeFloatService", "Error removing dismiss overlay: ${e.message}")
+                    }
+                    dismissOverlayView = null
+                    dismissOverlayParams = null
+                    isHidingOverlay = false
+                    hoveredTarget = 0
                 }
             }
             ?.start()
     }
 
+    private fun forceHideDismissOverlay() {
+        handler.removeCallbacks(autoHideOverlayRunnable)
+        val view = dismissOverlayView
+        if (view != null) {
+            try {
+                windowManager.removeView(view)
+            } catch (e: Exception) {
+                Log.e("HashtypeFloatService", "Error force removing dismiss overlay: ${e.message}")
+            }
+            dismissOverlayView = null
+            dismissOverlayParams = null
+        }
+        isHidingOverlay = false
+        hoveredTarget = 0
+    }
+
+    private fun isTouchInsideView(rawX: Float, rawY: Float, view: View): Boolean {
+        if (view.width == 0 || view.height == 0) return false
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        val left = location[0]
+        val top = location[1]
+        val right = left + view.width
+        val bottom = top + view.height
+        return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
+    }
+
     private fun updateHoverTargets(rawX: Float, rawY: Float) {
         val overlayView = dismissOverlayView ?: return
-        val displayMetrics = resources.displayMetrics
-        val screenHeight = displayMetrics.heightPixels
-        val screenWidth = displayMetrics.widthPixels
-        
-        val density = displayMetrics.density
-        val overlayHeightPx = (170 * density).toInt()
-        
-        val inDismissZone = rawY > (screenHeight - overlayHeightPx)
         
         val card15m = overlayView.findViewById<MaterialCardView>(R.id.card_mute_15m) ?: return
         val card24h = overlayView.findViewById<MaterialCardView>(R.id.card_mute_24h) ?: return
         
         var currentTarget = 0
-        if (inDismissZone) {
-            currentTarget = if (rawX < screenWidth / 2f) 1 else 2
+        if (isTouchInsideView(rawX, rawY, card15m)) {
+            currentTarget = 1
+        } else if (isTouchInsideView(rawX, rawY, card24h)) {
+            currentTarget = 2
         }
         
         if (currentTarget != hoveredTarget) {
@@ -451,6 +503,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             floatingView = null
         }
         updateVisibilityState(false)
+        forceHideDismissOverlay()
     }
 
     private fun startPulseAnimation() {
