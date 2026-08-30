@@ -2,13 +2,35 @@
   <img src="assets/icon/play_store_512.png" width="128" height="128" alt="Hashtype Icon">
 </p>
 
-# Hashtype 🎙️🤖
+# Hushtype 🎙️🤖
 
 [English](README.md) | [简体中文](README_zh.md)
 
 **Hashtype** is a state-of-the-art, open-source Android Voice-Typing Keyboard (IME) and Companion App. It is designed specifically for users who want complete control over their speech-to-text (STT) pipeline and data privacy. 
 
 Unlike traditional voice-typing keyboards that lock you into a single corporate service, Hashtype lets you bring your own API keys for **Speech-to-Text (STT)** and overlay **Large Language Models (LLMs)** to proofread, format, and polish your voice transcriptions in real time before they are entered.
+
+---
+
+## 📸 App Screenshots
+
+### Core Keyboard & Setup Experience
+
+| ⌨️ Active IME Keyboard | ⚙️ Settings Dashboard | 🎙️ Speech-To-Text Config |
+| :---: | :---: | :---: |
+| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) |
+
+### AI Integration & History Logs
+
+| 🤖 Language Model Config | 📝 Text Insertion Result | 📜 History & AI Diffs |
+| :---: | :---: | :---: |
+| ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) | ![History Diff Logs](assets/listing_pic/history_diff.jpg) |
+
+### Floating Voice Input Widget
+
+| 🫧 Floating Mic Customizer | 💬 Floating Mic In-App Overlay |
+| :---: | :---: |
+| ![Floating Mic Customizer](assets/listing_pic/floating_mic_customize.jpg) | ![Floating Mic Active](assets/listing_pic/floating_mic_active.jpg) |
 
 ---
 
@@ -43,27 +65,6 @@ graph TD
     I --> J[Save to Local History Database]
 ```
 
----
-
-## 📸 App Screenshots
-
-### Core Keyboard & Setup Experience
-
-| ⌨️ Active IME Keyboard | ⚙️ Settings Dashboard | 🎙️ Speech-To-Text Config |
-| :---: | :---: | :---: |
-| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) |
-
-### AI Integration & History Logs
-
-| 🤖 Language Model Config | 📝 Text Insertion Result | 📜 History & AI Diffs |
-| :---: | :---: | :---: |
-| ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) | ![History Diff Logs](assets/listing_pic/history_diff.jpg) |
-
-### Floating Voice Input Widget
-
-| 🫧 Floating Mic Customizer | 💬 Floating Mic In-App Overlay |
-| :---: | :---: |
-| ![Floating Mic Customizer](assets/listing_pic/floating_mic_customize.jpg) | ![Floating Mic Active](assets/listing_pic/floating_mic_active.jpg) |
 
 ---
 
@@ -72,10 +73,8 @@ graph TD
 | Provider | Speech-to-Text (STT) | Language Models (LLM) | Connection Method |
 | :---: | :---: | :---: | :---: |
 | **OpenAI** | ✅ (Whisper-1) | ✅ (GPT-4o, GPT-3.5, etc.) | Official API |
-| **Anthropic** | ❌ | ✅ (Claude 3.5 Sonnet, etc.) | Official API |
 | **Google Gemini** | ❌ | ✅ (Gemini 1.5 Pro/Flash) | Official API |
 | **Groq** | ✅ (Whisper Large V3) | ✅ (Llama 3, Mixtral, etc.) | Official API |
-| **Mistral AI** | ✅ (Mistral Large STT) | ❌ | Official API |
 | **Custom Endpoint**| ✅ (OpenAI API Compatible) | ✅ (OpenAI API Compatible) | Self-hosted or third-party gateways |
 
 ---
