@@ -2,94 +2,88 @@
   <img src="assets/icon/play_store_512.png" width="128" height="128" alt="Hashtype Icon">
 </p>
 
-# Hashtype 🎙️
+# Hashtype 🎙️🤖
 
 [English](README.md) | [简体中文](README_zh.md)
 
-**Hashtype** 是一款开源的 Android 语音输入法键盘（IME），专为希望完全掌控语音转文字（STT）流程的用户设计。
+**Hashtype** 是一款现代、纯原生、开源的 Android 语音输入助手与光标悬浮麦克风，采用 **100% 纯原生 Kotlin + Jetpack Compose (Material 3)** 构建。专为希望完全掌控语音转文字（STT）流程和数据隐私的用户设计。
 
-与将你锁定在单一服务商的传统键盘不同，Hashtype 允许你使用自己的 API 接口，并在转录结果之上叠加利用大语言模型（LLM）进行润色，从而获得完美且符合语境的输入体验。
-
----
-
-## 🧪 加入测试
-
-如果你想通过 Google Play Store 测试 Hashtype 的最新版本：
-
-1. **加入 Google 群组：** [hashtype](https://groups.google.com/g/hashtype)（无需申请，直接加入）。
-2. **参与测试：** 加入群组后，点击此链接加入 Play Store 的测试计划：[加入 Hashtype 测试](https://play.google.com/apps/testing/com.jia_yx.hashtype)。
-
----
-
-## 🚀 安装与使用
-
-1. **下载与安装：**
-   - 从 [Releases](https://github.com/blakejjia/speech-to-text-board-android/releases) 页面下载最新的 APK 文件并安装到你的 Android 设备上。
-2. **配置服务商：**
-   - 从桌面启动 **Hashtype** 应用。
-   - 进入 **STT 设置**，输入你的接口地址（Endpoint）和 API Key（例如 OpenAI Whisper）。
-   - 进入 **LLM 设置**，开启“AI Cleaning”，并设置你的系统提示词（可选但建议开启）。
-3. **启用键盘：**
-   - 进入 Android 设置 > 语言和输入法 > 屏幕键盘 > 管理键盘。
-   - 开启 **Hashtype**。
-4. **开始使用：**
-   - 在任何应用中，将输入法切换为 **Hashtype**。
-   - 点击麦克风图标开始录音，说话，完成后再次点击即可转录并插入文字。
+与将你锁定在单一服务商的传统语音输入工具不同，Hashtype 允许你使用自己的 **语音转文字 (STT)** API 密钥，并叠加利用 **大语言模型 (LLM)** 在文字输入前实时消除口语赘词、规范标点符号并进行文本清洗。
 
 ---
 
 ## 📸 应用截图
 
-| 键盘界面 | 应用设置 | STT 配置 |
-| :---: | :---: | :---: |
-| ![Ready](assets/listing_pic/ready.jpg) | ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) |
+### 系统设置与 AI 配置
 
-| LLM 配置 | 输入结果 |
-| :---: | :---: |
-| ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) |
+| ⚙️ 设置面板 | 🎙️ STT 语音转文字配置 | 🤖 LLM 语言模型配置 |
+| :---: | :---: | :---: |
+| ![Settings](assets/listing_pic/settings.jpg) | ![STT Settings](assets/listing_pic/stt%20settings.jpg) | ![LLM Settings](assets/listing_pic/language%20model%20settings.jpg) |
+
+### 悬浮麦克风与输入效果
+
+| 🫧 悬浮麦克风个性化 | 💬 悬浮麦克风桌面组件 | 📝 文本自动粘贴输入 |
+| :---: | :---: | :---: |
+| ![Floating Mic Customizer](assets/listing_pic/floating_mic_customize.jpg) | ![Floating Mic Active](assets/listing_pic/floating_mic_active.jpg) | ![Inserted](assets/listing_pic/inserted.jpg) |
 
 ---
 
 ## 🌟 核心特性
 
-- **完全开源：** 代码透明，完全免费。你可以使用自己的后端，也可以连接你喜爱的服务商。
-- **自定义 API 接口：**
-  - **语音转文字 (STT)：** 支持所有兼容 OpenAI 接口标准的转录 API（如 Whisper）。
-  - **大语言模型 (LLM)：** 支持 OpenAI、Anthropic (Claude) 和 Google Gemini。
-- **AI 文本润色：** 自动将 STT 转录结果发送给 LLM，在文字输入之前修复语法、标点和语境错误。
-- **可自定义的系统提示词：** 精确控制 AI 如何“清洗”你的文字。想要翻译？摘要？还是正式化？只需修改系统提示词即可。
-- **极简权限，隐私至上：** Hashtype **不需要** 任何危险的系统辅助功能（Accessibility）权限，也不需要额外的系统控制权。与市面上许多需要辅助功能权限来读取屏幕内容的 AI 输入工具不同，Hashtype 仅需要麦克风权限来录制语音。这意味着您的屏幕内容、密码等敏感信息绝不会被读取，隐私得到完全保障。
-- **直接通信：** 没有中间服务器。应用直接与你指定的 API 接口通信，确保数据链路安全。
-- **Material 3 设计：** 现代、简洁的键盘界面，支持动态配色，完美适配 Android 系统。
+- **🫧 键盘驱动的智能悬浮麦克风：** 用户软键盘弹起时自动展示，键盘收起时自动平滑隐藏；可全屏自由拖拽吸附，无需切换当前正在使用的输入法即可随时语音输入。
+- **🎙️ 自定义 API 接口 (STT)：** 支持连接 OpenAI Whisper、Groq、Mistral 或任何自建的兼容 OpenAI Whisper 标准的语音转写服务。
+- **🤖 实时动态获取服务商模型：** 选择服务商或输入 API Key 后，自动通过网络实时拉取该服务商（OpenAI, Anthropic, Google Gemini, Groq, Mistral）最新的模型列表供你选择。
+- **✨ 内置严格语音转写清洗提示词：** 内置深度调优的清洗规则，自动去除口语冗余词（如“呃”、“啊”、“那个”、“就是”）并规整标点符号；**严格只做转写与清洗，绝不回答用户问题或执行口述指令**。
+- **📋 智能自动粘贴辅助：** 转写与润色完成后，通过无障碍辅助服务自动将文本精准粘贴插入到当前激活的光标位置。
+- **📜 本地 SQLite 历史记录：** 本地持久化保存语音转录记录，支持一键实时搜索与清理。
+- **🎨 原生 Material You 动态色彩：** 完美适配 Material 3 动态色彩规范与 edge-to-edge 设计，支持 Modal Bottom Sheet 抽屉交互。
+- **🔒 隐私至上：** 无任何中间服务器收集数据，设备直连你配置的 API 接口；无任何第三方统计分析和广告。
 
 ---
 
-## 🛠️ 工作原理
+## 🚀 安装与设置
 
-1. **录音：** 点击麦克风开始说话，键盘会录制高质量音频。
-2. **转录：** 音频被发送到你选择的 **STT 服务商**（例如 Whisper）。
-3. **润色（可选）：** 转录结果被发送到你选择的 **LLM 服务商**（例如 GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro）。
-4. **清洗：** LLM 根据你的 **自定义系统提示词** 对文字进行润色（去除冗余词汇、修复错别字、调整格式）。
-5. **输入：** 最终完美的文本被直接输入到当前的文本框中。
+### 第 1 步：安装 APK
+- 从 [GitHub Releases](https://github.com/blakejjia/hush-type/releases) 页面下载最新版 APK 并安装到你的 Android 设备。
+
+### 第 2 步：配置服务商与模型
+1. 从桌面打开 **Hashtype** 应用。
+2. 进入 **Speech-to-Text**，选择服务商，输入你的 API Key，并选择转录模型。
+3. 进入 **Language Models**，开启 LLM 清洗，选择语言模型服务商，输入 API Key 并选择模型。
+
+### 第 3 步：开启无障碍自动粘贴辅助
+1. 在 Hashtype 设置中点击 **Auto-Paste Helper**。
+2. 在系统无障碍设置中启用 **Hashtype Floating Mic & Auto-Paste Helper** 服务。
+3. 之后在任何应用中呼出键盘时，屏幕上就会自动浮现悬浮麦克风，点击即可畅快语音输入！
 
 ---
 
-## 🏗️ 项目架构
+## 🏗️ 架构概览 (100% Native Kotlin)
 
-- **`apps/flutter_app`**: 主配置应用，负责设置管理和交互桥接。
-- **`apps/flutter_app/android`**: 包含原生 Kotlin `InputMethodService`实现，负责高性能音频录制和输入法集成。
-- **`services/`**: 负责 API 通信和提供商管理的共享逻辑。
+```
+hashtype/
+├── app/
+│   ├── src/main/
+│   │   ├── AndroidManifest.xml
+│   │   ├── kotlin/com/jia_yx/hashtype/
+│   │   │   ├── HashtypeApp.kt               # 应用入口
+│   │   │   ├── MainActivity.kt              # Compose ComponentActivity
+│   │   │   ├── HashtypeFloatingService.kt   # 键盘联动悬浮麦克风与自动粘贴
+│   │   │   ├── VoiceImeViewModel.kt         # 音频录制与 API 网络处理
+│   │   │   ├── HistoryDbHelper.kt           # SQLite 本地转录历史库
+│   │   │   ├── data/
+│   │   │   │   ├── AppSettings.kt           # 本地配置仓储
+│   │   │   │   └── AiProviders.kt           # 服务商定义与实时模型拉取
+│   │   │   └── ui/
+│   │   │       ├── MainScreen.kt            # 底部导航
+│   │   │       ├── theme/                   # Material 3 动态主题
+│   │   │       └── screens/                 # Modal bottom sheets 与界面
+│   │   └── res/                             # 矢量图标与资源
+│   └── build.gradle.kts                     # Gradle 构建脚本
+```
 
 ---
-
-## 🤝 参与贡献
-
-我们欢迎任何形式的贡献！无论是改进 UI、修复 Bug 还是优化文档，请随时提交 PR 或 Issue。
 
 ## 📄 开源协议
 
-本项目采用 [GPL v3 开源协议](LICENSE).
-
----
-
-用 ❤️ 为开源社区打造。
+本项目采用 [GNU General Public License v3.0 (GPL v3)](LICENSE) 开源协议。

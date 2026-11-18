@@ -61,7 +61,7 @@ fun AboutBottomSheet(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Version 2.0.0 (Native Kotlin)",
+                text = "Version 3.0.0 (Native Kotlin)",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline
             )

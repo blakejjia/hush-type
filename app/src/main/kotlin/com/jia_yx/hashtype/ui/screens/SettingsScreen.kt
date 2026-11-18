@@ -199,7 +199,7 @@ fun SettingsScreen() {
         SettingCard(
             icon = Icons.Default.Info,
             title = "About",
-            subtitle = "Version 2.0.0 (Native Kotlin)",
+            subtitle = "Version 3.0.0 (Native Kotlin)",
             onClick = { showAboutSheet = true }
         )
     }
