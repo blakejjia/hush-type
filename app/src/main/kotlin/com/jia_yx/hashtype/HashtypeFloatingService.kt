@@ -43,6 +43,8 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     private var initialX: Int = 0
     private var initialY: Int = 0
+    private var savedX: Int = -1
+    private var savedY: Int = -1
     private var initialTouchX: Float = 0f
     private var initialTouchY: Float = 0f
     private var isDragging = false
@@ -51,16 +53,16 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
     private val handler = Handler(Looper.getMainLooper())
     private var pulseAnimator: Animator? = null
 
-    // Debounce runnable to avoid flickering during focus transitions
+    // Debounce runnable to avoid flickering during keyboard transitions
     private val hideRunnable = Runnable {
-        if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Idle && !isInputActive()) {
-            hideFloatingWidget()
+        if (viewModel.getCurrentState() is VoiceImeViewModel.ImeState.Idle && !isKeyboardVisible()) {
+            hideFloatingWidget("keyboard_closed")
         }
     }
 
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "flutter.floating_mic_enabled") {
-            handler.post { checkInputFocusState() }
+            handler.post { checkKeyboardState("preference_changed") }
         } else if (key == "flutter.floating_mic_size" ||
                    key == "flutter.floating_mic_color" ||
                    key == "flutter.floating_mic_icon" ||
@@ -90,65 +92,46 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        checkInputFocusState()
+        Log.i("HashtypeFloatService", "onServiceConnected called")
+        checkKeyboardState("onServiceConnected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        checkInputFocusState()
+        checkKeyboardState("event:${event.eventType}")
     }
 
     /**
-     * Checks if any editable view (e.g. EditText) currently holds input focus.
+     * Checks if the soft keyboard (IME) is currently open and visible on screen.
      */
-    private fun isInputActive(): Boolean {
-        try {
-            // Check active root window first
-            val root = rootInActiveWindow
-            if (root != null) {
-                val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                if (focused != null) {
-                    val editable = focused.isEditable && focused.isFocused
-                    focused.recycle()
-                    root.recycle()
-                    if (editable) return true
-                } else {
-                    root.recycle()
+    private fun isKeyboardVisible(): Boolean {
+        val activeWindows = windows ?: return false
+        for (window in activeWindows) {
+            if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                val rect = android.graphics.Rect()
+                window.getBoundsInScreen(rect)
+                if (rect.height() > 100 && rect.width() > 100) {
+                    return true
                 }
             }
-
-            // Fallback search across all interactive windows
-            val activeWindows = windows
-            if (activeWindows != null) {
-                for (window in activeWindows) {
-                    val wRoot = window.root
-                    if (wRoot != null) {
-                        val focused = wRoot.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                        if (focused != null) {
-                            val editable = focused.isEditable && focused.isFocused
-                            focused.recycle()
-                            wRoot.recycle()
-                            if (editable) return true
-                        } else {
-                            wRoot.recycle()
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.d("HashtypeFloatService", "isInputActive error: ${e.message}")
         }
         return false
     }
 
-    private fun checkInputFocusState() {
+    /**
+     * Pure keyboard-driven visibility:
+     * - Keyboard pops up -> show floating mic
+     * - Keyboard dismisses -> hide floating mic
+     * - Busy (recording/transcribing) -> stay visible until finished
+     */
+    private fun checkKeyboardState(caller: String = "") {
         val enabled = sharedPreferences.getBoolean("flutter.floating_mic_enabled", true)
         if (!enabled) {
-            hideFloatingWidget()
+            hideFloatingWidget("disabled_by_settings")
             return
         }
 
-        // Keep visible during Recording or Processing
+        // Keep visible during Recording or Processing regardless of keyboard state
         val isBusy = viewModel.getCurrentState() !is VoiceImeViewModel.ImeState.Idle
         if (isBusy) {
             handler.removeCallbacks(hideRunnable)
@@ -158,20 +141,26 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             return
         }
 
-        if (isInputActive()) {
+        val keyboardVisible = isKeyboardVisible()
+        Log.d("HashtypeFloatService", "checkKeyboardState by $caller: keyboardVisible=$keyboardVisible, floatingView=${if (floatingView != null) "visible" else "null"}")
+        if (keyboardVisible) {
             handler.removeCallbacks(hideRunnable)
             if (floatingView == null) {
                 setupFloatingWidget()
             }
         } else {
-            // Focus lost: debounce 200ms before hiding
+            // Keyboard dismissed: debounce 100ms before hiding
             handler.removeCallbacks(hideRunnable)
-            handler.postDelayed(hideRunnable, 200L)
+            handler.postDelayed(hideRunnable, 100L)
         }
     }
 
     private fun setupFloatingWidget() {
-        if (floatingView != null) return
+        if (floatingView != null) {
+            Log.d("HashtypeFloatService", "setupFloatingWidget: floatingView already exists, skipping")
+            return
+        }
+        Log.i("HashtypeFloatService", "setupFloatingWidget: creating floating widget")
 
         val themedContext = DynamicColors.wrapContextIfAvailable(
             this,
@@ -188,6 +177,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
         }
+        Log.d("HashtypeFloatService", "setupFloatingWidget: windowType=$windowType")
 
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -198,12 +188,26 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             val displayMetrics = resources.displayMetrics
-            x = displayMetrics.widthPixels - (80 * displayMetrics.density).toInt()
-            y = displayMetrics.heightPixels / 2
+            x = if (savedX >= 0) savedX else displayMetrics.widthPixels - (80 * displayMetrics.density).toInt()
+            y = if (savedY >= 0) savedY else displayMetrics.heightPixels / 2
         }
 
         applySizeSettings(floatingView!!)
-        windowManager.addView(floatingView, params)
+        try {
+            windowManager.addView(floatingView, params)
+            Log.i("HashtypeFloatService", "setupFloatingWidget: successfully added floatingView to windowManager!")
+        } catch (e: Exception) {
+            Log.e("HashtypeFloatService", "setupFloatingWidget: FAILED with windowType=$windowType, trying fallback: ${e.message}", e)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && windowType != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY) {
+                try {
+                    params?.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                    windowManager.addView(floatingView, params)
+                    Log.i("HashtypeFloatService", "setupFloatingWidget: fallback to TYPE_APPLICATION_OVERLAY succeeded!")
+                } catch (fallbackEx: Exception) {
+                    Log.e("HashtypeFloatService", "setupFloatingWidget fallback also failed: ${fallbackEx.message}", fallbackEx)
+                }
+            }
+        }
         setupTouchListener()
         viewModel.reset()
     }
@@ -239,7 +243,10 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
+                    if (isDragging) {
+                        savedX = layoutParams.x
+                        savedY = layoutParams.y
+                    } else {
                         vibrate()
                         v.performClick()
                         viewModel.handleMicClick()
@@ -251,11 +258,13 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         }
     }
 
-    private fun hideFloatingWidget() {
+    private fun hideFloatingWidget(reason: String = "") {
+        Log.i("HashtypeFloatService", "hideFloatingWidget called (reason: $reason)")
         stopPulseAnimation()
         if (floatingView != null) {
             try {
                 windowManager.removeView(floatingView)
+                Log.i("HashtypeFloatService", "hideFloatingWidget: successfully removed view")
             } catch (e: Exception) {
                 Log.e("HashtypeFloatService", "Error removing floating view: ${e.message}")
             }
@@ -340,8 +349,8 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                     }
                 }
 
-                // If input is no longer active when returning to Idle, hide with debounce
-                checkInputFocusState()
+                // If keyboard is no longer active when returning to Idle, hide with debounce
+                checkKeyboardState("state_idle")
             }
             is VoiceImeViewModel.ImeState.Recording -> {
                 micIcon?.visibility = View.VISIBLE
@@ -532,7 +541,7 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
         fun updateSettings() {
             instance?.let { service ->
                 service.handler.post {
-                    service.checkInputFocusState()
+                    service.checkKeyboardState("updateSettings")
                     val view = service.floatingView
                     if (view != null) {
                         service.applySizeSettings(view)

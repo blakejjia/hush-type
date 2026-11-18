@@ -36,14 +36,15 @@ Previously, AI provider settings and logic were duplicated across Flutter Dart a
 
 ---
 
-## Floating Mic Architecture (Cursor-Driven)
+## Floating Mic Architecture (Keyboard-Driven)
 
-The floating microphone is implemented via `HashtypeFloatingService` (`AccessibilityService`) and is **strictly cursor-driven**:
+The floating microphone is implemented via `HashtypeFloatingService` (`AccessibilityService`) and is **strictly keyboard-driven**:
 
 ### 1. Visibility Lifecycle
-- **Active Input**: Only shows when an editable text input field (`EditText`) has input focus (`FOCUS_INPUT`, `node.isEditable && node.isFocused`).
-- **Focus Lost**: When the cursor/input field loses focus and the mic is in `Idle` state, the widget automatically hides with a ~200ms debounce to prevent flickering across window transitions.
-- **Recording / Processing**: If the user is currently recording or transcribing, the mic stays visible regardless of focus changes until transcription finishes and text is pasted.
+- **Keyboard Opened**: Only shows when the soft keyboard (`AccessibilityWindowInfo.TYPE_INPUT_METHOD`) pops up and is active on screen.
+- **Keyboard Dismissed**: When the user dismisses the keyboard (swipes down, presses Back, or taps outside), the widget automatically hides with a ~100ms debounce.
+- **Recording / Processing**: If the user is currently recording or transcribing, the mic stays visible regardless of keyboard changes until transcription finishes and text is pasted.
+- **Position Memory**: Dragged position is remembered across show/hide cycles.
 - **Default State**: Enabled by default (`flutter.floating_mic_enabled` defaults to `true`), with a toggle switch in the Settings screen.
 
 ### 2. Interaction
