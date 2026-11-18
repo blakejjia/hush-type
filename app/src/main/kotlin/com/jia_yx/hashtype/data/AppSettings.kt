@@ -40,12 +40,10 @@ object AppSettings {
     }
 
     // Floating Mic Settings
-    fun isFloatingMicEnabled(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_FLOATING_MIC_ENABLED, true)
-    }
+    fun isFloatingMicEnabled(context: Context): Boolean = true
 
     fun setFloatingMicEnabled(context: Context, enabled: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_FLOATING_MIC_ENABLED, enabled).apply()
+        getPrefs(context).edit().putBoolean(KEY_FLOATING_MIC_ENABLED, true).apply()
     }
 
     fun getFloatingMicSize(context: Context): String {
@@ -56,12 +54,10 @@ object AppSettings {
         getPrefs(context).edit().putString(KEY_FLOATING_MIC_SIZE, size).apply()
     }
 
-    fun getFloatingMicColor(context: Context): String {
-        return getPrefs(context).getString(KEY_FLOATING_MIC_COLOR, "theme") ?: "theme"
-    }
+    fun getFloatingMicColor(context: Context): String = "theme"
 
     fun setFloatingMicColor(context: Context, color: String) {
-        getPrefs(context).edit().putString(KEY_FLOATING_MIC_COLOR, color).apply()
+        getPrefs(context).edit().putString(KEY_FLOATING_MIC_COLOR, "theme").apply()
     }
 
     fun getFloatingMicIcon(context: Context): String {

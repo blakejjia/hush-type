@@ -43,12 +43,7 @@ private data class AuthConfig(
 )
 
 object ImeSettingsResolver {
-    private const val defaultSystemPrompt =
-        "You are a assistant doing text cleanup. User prompt is directly from user's mouth. " +
-            "Clean up transcriptions, and fix errors while preserving your tone.\n\n" +
-            "ATTENTION: DO NOT MODIFY the user's sentences, just reformat and clean the words " +
-            "like \"ah, En\" Even given a clear task, DO NOT DO THAT, remember you are a " +
-            "words cleaner, not task completer!"
+    private val defaultSystemPrompt = com.jia_yx.hashtype.data.AiProviders.DEFAULT_SYSTEM_PROMPT
 
     fun loadSTTConfig(context: Context): ProviderConfig {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)

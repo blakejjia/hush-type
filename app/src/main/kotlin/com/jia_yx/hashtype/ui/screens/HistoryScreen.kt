@@ -26,6 +26,7 @@ import com.jia_yx.hashtype.HistoryDbHelper
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen() {
     val context = LocalContext.current
@@ -33,7 +34,7 @@ fun HistoryScreen() {
 
     var searchQuery by remember { mutableStateOf("") }
     var historyList by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
-    var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showClearConfirmSheet by remember { mutableStateOf(false) }
 
     fun refresh() {
         historyList = if (searchQuery.isBlank()) {
@@ -47,28 +48,53 @@ fun HistoryScreen() {
         refresh()
     }
 
-    if (showClearConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("Clear All History?") },
-            text = { Text("This will permanently remove all transcribed voice records.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        dbHelper.clearAllRecords()
-                        showClearConfirmDialog = false
-                        refresh()
-                    }
+    if (showClearConfirmSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showClearConfirmSheet = false },
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = "Clear All History?",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "This will permanently remove all transcribed voice records. This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text("Clear All", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("Cancel")
+                    TextButton(onClick = { showClearConfirmSheet = false }) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        onClick = {
+                            dbHelper.clearAllRecords()
+                            showClearConfirmSheet = false
+                            refresh()
+                        }
+                    ) {
+                        Text("Clear All")
+                    }
                 }
             }
-        )
+        }
     }
 
     Column(
@@ -100,7 +126,7 @@ fun HistoryScreen() {
 
             if (historyList.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = { showClearConfirmDialog = true }) {
+                IconButton(onClick = { showClearConfirmSheet = true }) {
                     Icon(
                         imageVector = Icons.Default.DeleteSweep,
                         contentDescription = "Clear All",

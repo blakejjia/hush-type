@@ -125,12 +125,6 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
      * - Busy (recording/transcribing) -> stay visible until finished
      */
     private fun checkKeyboardState(caller: String = "") {
-        val enabled = sharedPreferences.getBoolean("flutter.floating_mic_enabled", true)
-        if (!enabled) {
-            hideFloatingWidget("disabled_by_settings")
-            return
-        }
-
         // Keep visible during Recording or Processing regardless of keyboard state
         val isBusy = viewModel.getCurrentState() !is VoiceImeViewModel.ImeState.Idle
         if (isBusy) {
@@ -319,35 +313,18 @@ class HashtypeFloatingService : AccessibilityService(), VoiceImeViewModel.Listen
                 spinner?.visibility = View.GONE
                 micIcon?.setImageResource(getCustomIconResource())
 
-                val colorStr = sharedPreferences.getString("flutter.floating_mic_color", "theme") ?: "theme"
-                if (colorStr == "theme") {
-                    val defaultBgColor = MaterialColors.getColor(
-                        fabCard,
-                        com.google.android.material.R.attr.colorSecondaryContainer,
-                        Color.parseColor("#E8DEF8")
-                    )
-                    val defaultIconColor = MaterialColors.getColor(
-                        fabCard,
-                        com.google.android.material.R.attr.colorOnSecondaryContainer,
-                        Color.parseColor("#21005D")
-                    )
-                    fabCard.setCardBackgroundColor(ColorStateList.valueOf(defaultBgColor))
-                    micIcon?.imageTintList = ColorStateList.valueOf(defaultIconColor)
-                } else {
-                    try {
-                        val bgColor = Color.parseColor(colorStr)
-                        fabCard.setCardBackgroundColor(ColorStateList.valueOf(bgColor))
-                        val iconColorStr = sharedPreferences.getString("flutter.floating_mic_icon_color", "#FFFFFF") ?: "#FFFFFF"
-                        micIcon?.imageTintList = ColorStateList.valueOf(Color.parseColor(iconColorStr))
-                    } catch (_: Exception) {
-                        val defaultBgColor = MaterialColors.getColor(
-                            fabCard,
-                            com.google.android.material.R.attr.colorSecondaryContainer,
-                            Color.parseColor("#E8DEF8")
-                        )
-                        fabCard.setCardBackgroundColor(ColorStateList.valueOf(defaultBgColor))
-                    }
-                }
+                val defaultBgColor = MaterialColors.getColor(
+                    fabCard,
+                    com.google.android.material.R.attr.colorSecondaryContainer,
+                    Color.parseColor("#E8DEF8")
+                )
+                val defaultIconColor = MaterialColors.getColor(
+                    fabCard,
+                    com.google.android.material.R.attr.colorOnSecondaryContainer,
+                    Color.parseColor("#21005D")
+                )
+                fabCard.setCardBackgroundColor(ColorStateList.valueOf(defaultBgColor))
+                micIcon?.imageTintList = ColorStateList.valueOf(defaultIconColor)
 
                 // If keyboard is no longer active when returning to Idle, hide with debounce
                 checkKeyboardState("state_idle")

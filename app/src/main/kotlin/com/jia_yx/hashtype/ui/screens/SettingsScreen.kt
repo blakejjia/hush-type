@@ -27,20 +27,18 @@ import com.jia_yx.hashtype.data.AppSettings
 fun SettingsScreen() {
     val context = LocalContext.current
 
-    var floatingMicEnabled by remember { mutableStateOf(AppSettings.isFloatingMicEnabled(context)) }
     var languageSummary by remember { mutableStateOf(AppSettings.getSelectedLanguageNames(context)) }
     var sttConfig by remember { mutableStateOf(AiProviders.getSttConfig(context)) }
     var llmConfig by remember { mutableStateOf(AiProviders.getLlmConfig(context)) }
     var isAccessibilityEnabled by remember { mutableStateOf(checkAccessibilityServiceEnabled(context)) }
 
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var showCustomizeDialog by remember { mutableStateOf(false) }
-    var showSttDialog by remember { mutableStateOf(false) }
-    var showLlmDialog by remember { mutableStateOf(false) }
-    var showAboutDialog by remember { mutableStateOf(false) }
+    var showLanguageSheet by remember { mutableStateOf(false) }
+    var showCustomizeSheet by remember { mutableStateOf(false) }
+    var showSttSheet by remember { mutableStateOf(false) }
+    var showLlmSheet by remember { mutableStateOf(false) }
+    var showAboutSheet by remember { mutableStateOf(false) }
 
     fun refresh() {
-        floatingMicEnabled = AppSettings.isFloatingMicEnabled(context)
         languageSummary = AppSettings.getSelectedLanguageNames(context)
         sttConfig = AiProviders.getSttConfig(context)
         llmConfig = AiProviders.getLlmConfig(context)
@@ -51,61 +49,46 @@ fun SettingsScreen() {
         refresh()
     }
 
-    if (showLanguageDialog) {
-        LanguageSelectionDialog(
-            onDismiss = {
-                showLanguageDialog = false
+    if (showLanguageSheet) {
+        LanguageSelectionBottomSheet(
+            onDismissRequest = {
+                showLanguageSheet = false
                 refresh()
             }
         )
     }
 
-    if (showCustomizeDialog) {
-        FloatingMicCustomizeDialog(
-            onDismiss = {
-                showCustomizeDialog = false
+    if (showCustomizeSheet) {
+        FloatingMicCustomizeBottomSheet(
+            onDismissRequest = {
+                showCustomizeSheet = false
                 refresh()
             }
         )
     }
 
-    if (showSttDialog) {
-        SttSettingsDialog(
-            onDismiss = {
-                showSttDialog = false
+    if (showSttSheet) {
+        SttSettingsBottomSheet(
+            onDismissRequest = {
+                showSttSheet = false
                 refresh()
             }
         )
     }
 
-    if (showLlmDialog) {
-        LlmSettingsDialog(
-            onDismiss = {
-                showLlmDialog = false
+    if (showLlmSheet) {
+        LlmSettingsBottomSheet(
+            onDismissRequest = {
+                showLlmSheet = false
                 refresh()
             }
         )
     }
 
-    if (showAboutDialog) {
-        AlertDialog(
-            onDismissRequest = { showAboutDialog = false },
-            icon = { Icon(Icons.Default.Info, contentDescription = null) },
-            title = { Text("About Hashtype") },
-            text = {
-                Column {
-                    Text("Hashtype Voice Input & Assistant", fontWeight = FontWeight.Bold)
-                    Text("Version 2.0.0 (Native Kotlin)")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Lightweight speech-to-text input method and cursor-driven floating microphone.")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("License: GNU General Public License v3.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAboutDialog = false }) {
-                    Text("OK")
-                }
+    if (showAboutSheet) {
+        AboutBottomSheet(
+            onDismissRequest = {
+                showAboutSheet = false
             }
         )
     }
@@ -118,22 +101,6 @@ fun SettingsScreen() {
     ) {
         // Floating Voice Input Section
         SectionHeader("Floating Voice Input")
-
-        SettingCard(
-            icon = Icons.Default.BubbleChart,
-            title = "Enable Floating Mic",
-            subtitle = "Show mic button when text cursor is active",
-            trailing = {
-                Switch(
-                    checked = floatingMicEnabled,
-                    onCheckedChange = { checked ->
-                        floatingMicEnabled = checked
-                        AppSettings.setFloatingMicEnabled(context, checked)
-                        HashtypeFloatingService.updateSettings()
-                    }
-                )
-            }
-        )
 
         SettingCard(
             icon = Icons.Default.AccessibilityNew,
@@ -158,8 +125,8 @@ fun SettingsScreen() {
         SettingCard(
             icon = Icons.Default.Tune,
             title = "Customize Floating Mic",
-            subtitle = "Button size, dynamic colors, and icons",
-            onClick = { showCustomizeDialog = true }
+            subtitle = "Button size, dynamic styling, and icons",
+            onClick = { showCustomizeSheet = true }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -171,7 +138,7 @@ fun SettingsScreen() {
             icon = Icons.Default.Language,
             title = "Input Language",
             subtitle = languageSummary,
-            onClick = { showLanguageDialog = true }
+            onClick = { showLanguageSheet = true }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -179,24 +146,24 @@ fun SettingsScreen() {
         // AI Models Section
         SectionHeader("AI Models")
 
-        val sttSubtitle = if (sttConfig.apiKey.isBlank()) {
+        val sttSubtitle = if (sttConfig.apiKey.isBlank() && sttConfig.provider != "Custom") {
             "Tap to configure API key & model"
         } else {
             "${sttConfig.provider} (${sttConfig.model})"
         }
-        val sttNeedsConfig = sttConfig.apiKey.isBlank()
+        val sttNeedsConfig = sttConfig.apiKey.isBlank() && sttConfig.provider != "Custom"
 
         SettingCard(
             icon = Icons.Default.Mic,
             title = "Speech-to-Text",
             subtitle = sttSubtitle,
             subtitleColor = if (sttNeedsConfig) MaterialTheme.colorScheme.error else null,
-            onClick = { showSttDialog = true }
+            onClick = { showSttSheet = true }
         )
 
         val llmSubtitle = if (!llmConfig.enabled) {
             "Disabled"
-        } else if (llmConfig.apiKey.isBlank()) {
+        } else if (llmConfig.apiKey.isBlank() && llmConfig.provider != "Custom") {
             "Tap to configure API key & model"
         } else {
             "${llmConfig.provider} (${llmConfig.model})"
@@ -221,7 +188,7 @@ fun SettingsScreen() {
                     )
                 }
             },
-            onClick = { showLlmDialog = true }
+            onClick = { showLlmSheet = true }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -233,7 +200,7 @@ fun SettingsScreen() {
             icon = Icons.Default.Info,
             title = "About",
             subtitle = "Version 2.0.0 (Native Kotlin)",
-            onClick = { showAboutDialog = true }
+            onClick = { showAboutSheet = true }
         )
     }
 }
