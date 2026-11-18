@@ -9,8 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -160,7 +159,7 @@ fun LlmSettingsBottomSheet(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                         shape = RoundedCornerShape(14.dp)
                     )
                     ExposedDropdownMenu(
@@ -204,7 +203,7 @@ fun LlmSettingsBottomSheet(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Get Key", style = MaterialTheme.typography.labelSmall)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(12.dp))
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(12.dp))
                             }
                         }
                     }
@@ -277,12 +276,12 @@ fun LlmSettingsBottomSheet(
                     ) {
                         OutlinedTextField(
                             value = selectedModel,
-                            onValueChange = { selectedModel = it },
-                            readOnly = false,
+                            onValueChange = {},
+                            readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelDropdownExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                             shape = RoundedCornerShape(14.dp)
                         )
                         ExposedDropdownMenu(
@@ -318,46 +317,6 @@ fun LlmSettingsBottomSheet(
                         shape = RoundedCornerShape(14.dp),
                         singleLine = true
                     )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Built-in System Prompt Info Card
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .padding(top = 2.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Built-in Speech Transcription Cleaner",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Optimized to clean filler words and format punctuation without altering your meaning. Even when you dictate questions or commands, the model strictly transcribes your words and will never answer them.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                 }
             }
 

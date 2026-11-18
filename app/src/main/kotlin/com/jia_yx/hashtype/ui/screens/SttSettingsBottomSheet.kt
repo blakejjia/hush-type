@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -128,7 +128,7 @@ fun SttSettingsBottomSheet(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerDropdownExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(),
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     shape = RoundedCornerShape(14.dp)
                 )
                 ExposedDropdownMenu(
@@ -172,7 +172,7 @@ fun SttSettingsBottomSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Get Key", style = MaterialTheme.typography.labelSmall)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(12.dp))
                         }
                     }
                 }
@@ -245,12 +245,12 @@ fun SttSettingsBottomSheet(
                 ) {
                     OutlinedTextField(
                         value = selectedModel,
-                        onValueChange = { selectedModel = it },
-                        readOnly = false,
+                        onValueChange = {},
+                        readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                         shape = RoundedCornerShape(14.dp)
                     )
                     ExposedDropdownMenu(

@@ -17,7 +17,6 @@ object AppSettings {
     private const val KEY_FLOATING_MIC_SIZE = "flutter.floating_mic_size"
     private const val KEY_FLOATING_MIC_COLOR = "flutter.floating_mic_color"
     private const val KEY_FLOATING_MIC_ICON = "flutter.floating_mic_icon"
-    private const val KEY_FLOATING_MIC_ICON_COLOR = "flutter.floating_mic_icon_color"
     private const val KEY_SELECTED_LANGUAGES = "flutter.selected_languages"
     private const val KEY_STT_SETTINGS = "flutter.stt_settings"
     private const val KEY_LLM_SETTINGS = "flutter.llm_settings"
@@ -66,14 +65,6 @@ object AppSettings {
 
     fun setFloatingMicIcon(context: Context, icon: String) {
         getPrefs(context).edit().putString(KEY_FLOATING_MIC_ICON, icon).apply()
-    }
-
-    fun getFloatingMicIconColor(context: Context): String {
-        return getPrefs(context).getString(KEY_FLOATING_MIC_ICON_COLOR, "#FFFFFF") ?: "#FFFFFF"
-    }
-
-    fun setFloatingMicIconColor(context: Context, color: String) {
-        getPrefs(context).edit().putString(KEY_FLOATING_MIC_ICON_COLOR, color).apply()
     }
 
     // Language Settings
