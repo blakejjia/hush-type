@@ -1,86 +1,117 @@
-# AGENTS.md — Hashtype (Speech-to-Text IME)
+# AGENTS.md — Hashtype (Voice-to-Text Assistant & IME)
 
-## Project overview
+## Project Overview
 
-Android voice-typing keyboard with Flutter config app + native Kotlin IME.
-Single-package Flutter project rooted at the repo root.
+Hashtype is an Android speech-to-text input tool combining:
+1. **Flutter Config App** (`lib/`): Manages STT/LLM provider keys, prompt customization, input languages, and floating mic appearance.
+2. **Native Kotlin IME** (`VoiceInputMethodService.kt`): InputMethodService providing a voice-typing keyboard view.
+3. **Native Kotlin Floating Mic** (`HashtypeFloatingService.kt`): AccessibilityService rendering a lightweight, cursor-driven floating microphone widget directly above any active text input on the system.
+4. **Recognition Service** (`HashtypeRecognitionService.kt`): Standard Android speech recognition provider bridge.
 
-- **Package name:** `com.jia_yx.hashtype` / `hashtype` (pub)
+- **Package name:** `com.jia_yx.hashtype` / `hashtype`
 - **License:** GPL v3
 
-## Build & dev commands
+---
 
-All run from the repo root:
+## Build & Dev Commands
 
-| Command | Notes |
+Run from the repository root:
+
+| Command | Description |
 |---|---|
-| `flutter pub get` | Install deps |
-| `flutter run` | Launch on connected device/emulator |
-| `flutter build apk --release` | Release APK (needs `key.properties` at android/ root) |
-| `flutter build appbundle --release` | Play Store bundle |
-| `flutter analyze` | Dart static analysis (flutter_lints defaults) |
-| `flutter test` | Exists but **no tests written yet** |
+| `flutter pub get` | Resolve dependencies |
+| `flutter run` | Run debug app on connected device / emulator |
+| `flutter analyze` | Static analysis (must pass with 0 warnings/errors) |
+| `flutter build apk --debug` | Build debug APK |
+| `flutter build apk --release` | Build release APK (`android/key.properties` needed) |
 
 - Gradle wrapper: `8.14-all`, AGP `8.11.1`, Kotlin `2.2.20`, Java 17
-- JVM heap: 8 GB (`gradle.properties`)
 
-## Critical architecture: dual Dart + Kotlin implementation
+---
+
+## Critical Architecture: Dual Dart + Kotlin Implementation
 
 AI provider settings logic exists in **two independent implementations** that must be kept in sync:
 
-| Layer | File |
+| Layer | Files |
 |---|---|
-| **Dart** (Flutter config app) | `lib/services/ai_provider_registry.dart` + `lib/services/ai_feature_settings_service.dart` |
-| **Kotlin** (IME service) | `android/.../ImeSettingsResolver.kt` |
+| **Dart** (Flutter App) | `lib/services/ai_provider_registry.dart`, `lib/services/ai_feature_settings_service.dart` |
+| **Kotlin** (IME & Floating Mic) | `android/.../ImeSettingsResolver.kt` |
 
-Both read the same raw JSON from `FlutterSharedPreferences` and independently compute runtime config (endpoints, auth headers, request types).
+Both read raw JSON from Android `SharedPreferences` (named `"FlutterSharedPreferences"`).
 
-**Why:** The Kotlin `InputMethodService` can launch before the Flutter app process exists, so it cannot rely on Dart-computed caches.
+**Why:** Both `VoiceInputMethodService` and `HashtypeFloatingService` run natively in the background and can launch before the Flutter engine process is spun up. They cannot rely on Dart runtime state.
 
-**When you add/modify a provider, you MUST update both sides:**
-- Dart: `AiProviderRegistry._providers` → `ProviderSpec` entries + `build*Endpoint()` static methods
-- Kotlin: `ImeSettingsResolver` → `when` expressions, API key validators, `build*Endpoint()` methods
+**Rule:** When adding/modifying an STT or LLM provider:
+- Update Dart `AiProviderRegistry._providers` + endpoint builders.
+- Update Kotlin `ImeSettingsResolver` `when` expressions + endpoint builders.
 
-## Shared settings schema
+---
 
-Settings are stored in `SharedPreferences` (name: `"FlutterSharedPreferences"`) under these keys:
+## Floating Mic Architecture (Cursor-Driven)
 
-- `flutter.stt_settings` — STT provider config
-- `flutter.llm_settings` — LLM provider config + system prompt
-- `flutter.show_period_button` — keyboard toggle
+The floating microphone is implemented via `HashtypeFloatingService` (`AccessibilityService`) and is **cursor-driven**:
 
-Do not rename these keys or change the JSON structure without updating both Dart and Kotlin readers.
+### 1. Visibility Lifecycle
+- **Active Input**: Only shows when an editable text input field (`EditText`) has input focus (`FOCUS_INPUT`, `node.isEditable && node.isFocused`).
+- **Focus Lost**: When the cursor/input field loses focus and the mic is in `Idle` state, the widget automatically hides with a ~200ms debounce to prevent flickering across window transitions.
+- **Recording / Processing**: If the user is currently recording or transcribing, the mic stays visible regardless of focus changes until transcription finishes and text is pasted.
+- **Default State**: Enabled by default (`flutter.floating_mic_enabled` defaults to `true`), with a toggle switch in the Settings page.
 
-## IME vs App duality
+### 2. Interaction
+- **Single Tap / Click**:
+  - If `Idle`: starts recording.
+  - If `Recording`: stops recording and initiates STT + LLM transcription pipeline.
+- **Drag**: Smoothly repositions the floating mic across the screen, clamped within display bounds.
+- **Auto-Paste**: Uses accessibility actions (`ACTION_PASTE`) and clipboard fallback to insert transcribed text at the active cursor.
 
-- **Hashtype app** (Flutter): settings/config UI only. Does not type text.
-- **Hashtype Keyboard** (Kotlin `VoiceInputMethodService`): the actual IME. Uses `VoiceImeViewModel` for recording, transcription, and LLM cleanup. Reads settings from `FlutterSharedPreferences`.
+### 3. Deliberately Omitted / Legacy Anti-Features
+Do **NOT** re-introduce:
+- ❌ 15-minute / 24-hour mute targets or dismiss overlays (now obsolete due to cursor-driven display).
+- ❌ Border auto-fold animations.
+- ❌ Landscape or gaming auto-hide detection heuristics.
+- ❌ Push-to-talk long-press or long-press cancel.
 
-The keyboard can function independently once settings are saved by the app.
+---
 
-## Android module structure
+## Theming & Styling
+
+- **Dynamic Material You**: Uses `dynamic_color` with `DynamicColorBuilder`. Adapts to the user's Android 12+ wallpaper colors automatically.
+- **Fallback**: Default blue palette (`Colors.blue`).
+- **System Mode**: Brightness strictly follows `ThemeMode.system` (light when system is light, dark when system is dark).
+- There are no manual "Appearance" or "Dark Mode" override switches in Settings.
+
+---
+
+## Shared Settings Schema (`FlutterSharedPreferences`)
+
+| Key | Type | Description |
+|---|---|---|
+| `flutter.stt_settings` | String (JSON) | STT provider configuration, API key, endpoint, model |
+| `flutter.llm_settings` | String (JSON) | LLM post-processing config, prompt, API key |
+| `flutter.selected_languages` | List<String> | Active input language codes (e.g. `["en_US"]`) |
+| `flutter.floating_mic_enabled` | Boolean | Global toggle for the floating mic (default: `true`) |
+| `flutter.floating_mic_size` | String | Size preset: `"small"`, `"medium"`, `"large"` |
+| `flutter.floating_mic_color` | String | Button color hex or `"theme"` for dynamic system color |
+| `flutter.floating_mic_icon` | String | Icon name: `"mic"`, `"heart"`, `"star"`, `"chat"`, `"music"` |
+| `flutter.floating_mic_icon_color` | String | Icon tint hex (default: `"#FFFFFF"`) |
+
+---
+
+## Android Service Manifest Structure
 
 ```
 android/app/src/main/kotlin/com/jia_yx/hashtype/
-├── MainActivity.kt              # Flutter host, MethodChannel bridge
-├── VoiceInputMethodService.kt   # IME entry point (InputMethodService)
-├── VoiceImeViewModel.kt         # Recording, API calls, LLM pipeline
-├── VoiceImeView.kt              # Keyboard UI layout
-├── ImeSettingsResolver.kt       # Kotlin-side settings parsing
-└── HashtypeRecognitionService.kt # Android RecognitionService bridge
+├── MainActivity.kt               # Flutter engine host + MethodChannel bridge
+├── VoiceInputMethodService.kt    # InputMethodService (IME keyboard)
+├── VoiceImeViewModel.kt          # Shared state machine for audio recording, STT, LLM
+├── VoiceImeView.kt               # Keyboard UI layout
+├── HashtypeFloatingService.kt    # AccessibilityService for cursor-driven floating mic
+├── HashtypeRecognitionService.kt # Android RecognitionService interface
+├── ImeSettingsResolver.kt        # Kotlin settings deserializer
+└── HistoryDbHelper.kt            # SQLite transcription history persistence
 ```
 
-Two services in `AndroidManifest.xml`: the IME service and the recognition service.
-
-## Key dependencies
-
-- `shared_preferences` — all settings persistence
-- `http` — Flutter-side API calls
-- `com.squareup.okhttp3:okhttp:4.12.0` — Kotlin-side HTTP
-- UI: `google_fonts` (Outfit), Material 3 dynamic colors, `url_launcher`
-
-## Style / conventions
-
-- `analysis_options.yaml` inherits `package:flutter_lints/flutter.yaml` (defaults only, no custom rules)
-- No `flutter_localizations` or `.arb` files — language is handled manually via `shared_preferences`
-- No CI pipeline configured
+Two core permissions are critical for floating mic functionality:
+- `android.permission.RECORD_AUDIO`: Voice input recording.
+- `android.permission.BIND_ACCESSIBILITY_SERVICE`: Window inspection for cursor focus and text pasting.
